@@ -1,0 +1,1263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Skanking Sequencer</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101113;
+        --panel: #181b20;
+        --panel-2: #22262e;
+        --line: #343a46;
+        --text: #f5f7fb;
+        --muted: #9da7b7;
+        --rhythm: #f5b83d;
+        --harmony: #00d4aa;
+        --drum: #9aa4b2;
+        --danger: #ff6b6b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(245, 184, 61, 0.1), transparent 30rem),
+          radial-gradient(circle at top right, rgba(0, 212, 170, 0.12), transparent 32rem),
+          var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.65rem 0.95rem;
+        background: var(--panel-2);
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      button:hover,
+      button.active {
+        border-color: var(--rhythm);
+        color: #fff;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      input {
+        border: 1px solid var(--line);
+        border-radius: 0.7rem;
+        background: #0f1115;
+        color: var(--text);
+        padding: 0.45rem 0.6rem;
+      }
+
+      input[type="range"] {
+        accent-color: var(--rhythm);
+        width: 8rem;
+      }
+
+      .app {
+        width: min(1220px, calc(100vw - 2rem));
+        margin: 0 auto;
+        padding: 2rem 0 3rem;
+      }
+
+      header.hero,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 1.25rem;
+        background: rgba(24, 27, 32, 0.88);
+        box-shadow: 0 1rem 4rem rgba(0, 0, 0, 0.22);
+      }
+
+      header.hero {
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+      }
+
+      h1,
+      h2,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 0.35rem;
+        letter-spacing: -0.04em;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .status-pill {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.5rem 0.8rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .controls,
+      .scene-tabs,
+      .volumes {
+        display: flex;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .panel {
+        margin-top: 1rem;
+        padding: 1rem;
+      }
+
+      .controls {
+        justify-content: space-between;
+      }
+
+      .control-group {
+        display: flex;
+        gap: 0.55rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .control-group label,
+      .track-label {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      #bpm {
+        width: 4.5rem;
+        text-align: center;
+      }
+
+      .scene-tabs button.pending {
+        border-color: var(--harmony);
+        box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.16);
+      }
+
+      .grid-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+
+      .step-grid {
+        display: grid;
+        grid-template-columns: repeat(16, minmax(2.8rem, 1fr));
+        gap: 0.4rem;
+      }
+
+      .chord-cell,
+      .drum-cell {
+        position: relative;
+        min-height: 4.6rem;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        background: #12151a;
+        overflow: hidden;
+      }
+
+      .chord-cell {
+        padding: 0.55rem;
+        cursor: text;
+      }
+
+      .chord-cell.beat,
+      .drum-cell.beat {
+        border-left-width: 3px;
+      }
+
+      .chord-cell.playing,
+      .drum-cell.playing {
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+      }
+
+      .step-number {
+        display: block;
+        color: var(--muted);
+        font-size: 0.68rem;
+        margin-bottom: 0.35rem;
+      }
+
+      .layer-row {
+        display: grid;
+        grid-template-columns: 1rem minmax(0, 1fr);
+        gap: 0.25rem;
+        align-items: center;
+        min-height: 1.25rem;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .layer-row.rhythm {
+        color: var(--rhythm);
+      }
+
+      .layer-row.harmony {
+        color: var(--harmony);
+      }
+
+      .layer-badge {
+        color: currentColor;
+        font-size: 0.68rem;
+        opacity: 0.72;
+      }
+
+      .chord-input {
+        width: 100%;
+        min-width: 0;
+        height: 1.2em;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        background: transparent;
+        color: currentColor;
+        font: inherit;
+        line-height: inherit;
+        outline: 0;
+        box-shadow: inset 0 -1px 0 currentColor;
+      }
+
+      .chord-input.invalid {
+        color: var(--danger);
+      }
+
+      .drum-grid {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .drum-row {
+        display: grid;
+        grid-template-columns: 9rem 1fr;
+        gap: 0.55rem;
+        align-items: center;
+      }
+
+      .track-head {
+        display: grid;
+        gap: 0.35rem;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        background: #12151a;
+        padding: 0.6rem;
+      }
+
+      .track-head strong {
+        color: var(--drum);
+      }
+
+      .drum-cell {
+        min-height: 2.4rem;
+        cursor: pointer;
+      }
+
+      .drum-cell.on {
+        background: rgba(154, 164, 178, 0.24);
+        border-color: var(--drum);
+      }
+
+      .drum-cell.on::after {
+        content: "";
+        position: absolute;
+        inset: 0.72rem;
+        border-radius: 999px;
+        background: var(--drum);
+      }
+
+      .hint {
+        margin: 0.8rem 0 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .catalog-dialog {
+        width: min(760px, calc(100vw - 2rem));
+        height: min(680px, calc(100vh - 2rem));
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: var(--panel);
+        color: var(--text);
+        padding: 1rem;
+        overflow: hidden;
+      }
+
+      .catalog-dialog[open] {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+      }
+
+      .catalog-dialog::backdrop {
+        background: rgba(0, 0, 0, 0.68);
+      }
+
+      .catalog-head,
+      .catalog-actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .catalog-rows {
+        align-content: start;
+        display: grid;
+        grid-auto-rows: max-content;
+        margin: 1rem 0;
+        overflow-y: auto;
+        padding-right: 0.25rem;
+      }
+
+      .catalog-row,
+      .catalog-table-head {
+        display: grid;
+        grid-template-columns: minmax(5rem, 0.7fr) minmax(10rem, 2fr) 5.75rem;
+        gap: 0.4rem;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        padding: 0.35rem 0;
+      }
+
+      .catalog-table-head {
+        height: 2rem;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--panel);
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .catalog-row {
+        height: 2.6rem;
+      }
+
+      .catalog-row input {
+        width: 100%;
+        border-color: transparent;
+        background: #12151a;
+        padding-block: 0.35rem;
+      }
+
+      .catalog-row button {
+        padding: 0.45rem 0.55rem;
+      }
+
+      .catalog-row input.invalid {
+        border-color: var(--danger);
+        color: var(--danger);
+        box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.16);
+      }
+
+      @media (max-width: 820px) {
+        .step-grid {
+          grid-template-columns: repeat(8, minmax(2.6rem, 1fr));
+        }
+
+        .catalog-row,
+        .catalog-table-head {
+          grid-template-columns: 1fr;
+        }
+
+        .drum-row {
+          grid-template-columns: 1fr;
+        }
+
+        header.hero,
+        .grid-head {
+          display: block;
+        }
+
+        .status-pill {
+          display: inline-flex;
+          margin-top: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <div>
+          <h1>Skanking Sequencer</h1>
+          <p>Two-bar browser sequencer for chord chops, sustained harmony, and drum grooves. No DAW, server, bundler, or dependencies.</p>
+        </div>
+        <div id="status" class="status-pill">Stopped</div>
+      </header>
+
+      <section class="panel controls" aria-label="Global controls">
+        <div class="control-group">
+          <button id="play">Play</button>
+          <button id="stop">Stop</button>
+          <label for="bpm">BPM</label>
+          <button id="bpm-down" aria-label="Decrease BPM">--</button>
+          <input id="bpm" type="number" min="60" max="200" step="1" value="100" />
+          <button id="bpm-up" aria-label="Increase BPM">++</button>
+        </div>
+        <div class="control-group">
+          <label for="strum">Strum Length</label>
+          <input id="strum" type="range" min="0.05" max="0.25" step="0.01" value="0.12" />
+          <label for="pad-attack">Pad Attack</label>
+          <input id="pad-attack" type="range" min="0.02" max="0.4" step="0.01" value="0.08" />
+        </div>
+        <div class="volumes" aria-label="Volumes">
+          <label>Master <input id="master-volume" type="range" min="0" max="1" step="0.01" value="0.8" /></label>
+          <label>Rhythm <input id="rhythm-volume" type="range" min="0" max="1" step="0.01" value="0.55" /></label>
+          <label>Harmony <input id="harmony-volume" type="range" min="0" max="1" step="0.01" value="0.35" /></label>
+          <label>Drums <input id="drum-volume" type="range" min="0" max="1" step="0.01" value="0.75" /></label>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Scenes">
+        <div class="scene-tabs" id="scene-tabs"></div>
+      </section>
+
+      <section class="panel">
+        <div class="grid-head">
+          <div>
+            <h2>Chord Grid</h2>
+            <p>Edit Rhythm and Harmony directly in the stacked fields. Empty or invalid entries stay editable and do not play.</p>
+          </div>
+          <button id="catalog-open">Chord Catalog</button>
+        </div>
+        <div id="chord-grid" class="step-grid" aria-label="Chord steps"></div>
+        <p class="hint">Use chord symbols in the grid, then configure their note lists in the catalog. Inline voicings like Cm=g3,c4,eb4 still work.</p>
+      </section>
+
+      <section class="panel">
+        <div class="grid-head">
+          <div>
+            <h2>Drum Grid</h2>
+            <p>Four synthesized drum lanes share the same 32-step clock.</p>
+          </div>
+        </div>
+        <div id="drum-grid" class="drum-grid" aria-label="Drum steps"></div>
+      </section>
+    </main>
+
+    <dialog id="catalog-dialog" class="catalog-dialog">
+      <div class="catalog-head">
+        <div>
+          <h2>Chord Catalog</h2>
+          <p>Define reusable chord symbols as comma-separated lowercase note lists. Names can exist here before they appear in the grid.</p>
+        </div>
+        <button id="catalog-close" aria-label="Close chord catalog">Close</button>
+      </div>
+      <div id="catalog-rows" class="catalog-rows"></div>
+      <div class="catalog-actions">
+        <button id="catalog-add">Add Chord</button>
+        <button id="catalog-save">Save Catalog</button>
+      </div>
+      <p class="hint">Example: chord <strong>Cm</strong>, notes <strong>g3,c4,eb4</strong>. Invalid or duplicate catalog rows are ignored until fixed.</p>
+    </dialog>
+
+    <script>
+      const STEPS = 32;
+      const TRACKS = [
+        { key: "kick", label: "Kick", volume: 0.9 },
+        { key: "snare", label: "Snare", volume: 0.75 },
+        { key: "hihat", label: "Hi-hat", volume: 0.45 },
+        { key: "openhat", label: "Open HH", volume: 0.55 },
+      ];
+
+      const ROOTS = {
+        C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5,
+        "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11,
+      };
+      const QUALITY_ALIASES = {
+        "": { name: "", intervals: [0, 4, 7] },
+        m: { name: "m", intervals: [0, 3, 7] },
+        min: { name: "m", intervals: [0, 3, 7] },
+        minor: { name: "m", intervals: [0, 3, 7] },
+        dim: { name: "dim", intervals: [0, 3, 6] },
+        aug: { name: "aug", intervals: [0, 4, 8] },
+        maj7: { name: "maj7", intervals: [0, 4, 7, 11] },
+        major7: { name: "maj7", intervals: [0, 4, 7, 11] },
+        M7: { name: "maj7", intervals: [0, 4, 7, 11] },
+        "7": { name: "7", intervals: [0, 4, 7, 10] },
+        m7: { name: "m7", intervals: [0, 3, 7, 10] },
+        min7: { name: "m7", intervals: [0, 3, 7, 10] },
+        dim7: { name: "dim7", intervals: [0, 3, 6, 9] },
+        m7b5: { name: "m7b5", intervals: [0, 3, 6, 10] },
+        min7b5: { name: "m7b5", intervals: [0, 3, 6, 10] },
+        sus2: { name: "sus2", intervals: [0, 2, 7] },
+        sus4: { name: "sus4", intervals: [0, 5, 7] },
+      };
+      const DEFAULT_CHORD_CATALOG = {
+        C: "c4,e4,g4",
+        F: "f4,a4,c5",
+        G: "g3,b3,d4",
+        C7: "c4,e4,g4,bb4",
+        F7: "f4,a4,c5,eb5",
+        G7: "g3,b3,d4,f4",
+        Cm: "c4,eb4,g4",
+      };
+
+      const state = {
+        bpm: 100,
+        currentScene: 0,
+        pendingScene: null,
+        playhead: -1,
+        isPlaying: false,
+        strumLength: 0.12,
+        padAttack: 0.08,
+        volumes: { master: 0.8, rhythm: 0.55, harmony: 0.35, drums: 0.75 },
+        chordCatalog: { ...DEFAULT_CHORD_CATALOG },
+        scenes: Array.from({ length: 4 }, (_, index) => createScene(index)),
+      };
+
+      let audioContext;
+      let masterGain;
+      let rhythmGain;
+      let harmonyGain;
+      let drumGain;
+      let schedulerTimer = null;
+      let nextStepIndex = 0;
+      let nextNoteTime = 0;
+      let harmonyVoice = null;
+
+      const el = {
+        status: document.getElementById("status"),
+        play: document.getElementById("play"),
+        stop: document.getElementById("stop"),
+        bpm: document.getElementById("bpm"),
+        bpmDown: document.getElementById("bpm-down"),
+        bpmUp: document.getElementById("bpm-up"),
+        strum: document.getElementById("strum"),
+        padAttack: document.getElementById("pad-attack"),
+        sceneTabs: document.getElementById("scene-tabs"),
+        chordGrid: document.getElementById("chord-grid"),
+        drumGrid: document.getElementById("drum-grid"),
+        masterVolume: document.getElementById("master-volume"),
+        rhythmVolume: document.getElementById("rhythm-volume"),
+        harmonyVolume: document.getElementById("harmony-volume"),
+        drumVolume: document.getElementById("drum-volume"),
+        catalogOpen: document.getElementById("catalog-open"),
+        catalogDialog: document.getElementById("catalog-dialog"),
+        catalogRows: document.getElementById("catalog-rows"),
+        catalogAdd: document.getElementById("catalog-add"),
+        catalogSave: document.getElementById("catalog-save"),
+        catalogClose: document.getElementById("catalog-close"),
+      };
+
+      function createScene(index) {
+        const scene = createBlankScene(index);
+
+        if (index === 0) {
+          scene.rhythm[4] = "C7";
+          scene.rhythm[12] = "F7";
+          scene.rhythm[20] = "G7";
+          scene.rhythm[28] = "F7";
+          scene.harmony[0] = "C";
+          scene.harmony[16] = "F";
+          for (let step = 0; step < STEPS; step += 4) scene.drums.kick[step] = true;
+          [8, 24].forEach((step) => scene.drums.snare[step] = true);
+          for (let step = 2; step < STEPS; step += 4) scene.drums.hihat[step] = true;
+          [15, 31].forEach((step) => scene.drums.openhat[step] = true);
+        }
+
+        return scene;
+      }
+
+      function createBlankScene(index) {
+        return {
+          name: `Scene ${index + 1}`,
+          rhythm: Array(STEPS).fill(""),
+          harmony: Array(STEPS).fill(""),
+          drums: Object.fromEntries(TRACKS.map((track) => [track.key, Array(STEPS).fill(false)])),
+          trackVolumes: Object.fromEntries(TRACKS.map((track) => [track.key, track.volume])),
+        };
+      }
+
+      function currentScene() {
+        return state.scenes[state.currentScene];
+      }
+
+      function escapeAttr(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function midiToHz(midi) {
+        return 440 * Math.pow(2, (midi - 69) / 12);
+      }
+
+      function canonicalRoot(rawRoot) {
+        const letter = rawRoot[0].toUpperCase();
+        const accidental = rawRoot.slice(1);
+        return `${letter}${accidental}`;
+      }
+
+      function chordName(rawChord) {
+        const cleanedChord = String(rawChord || "").split("=")[0].trim().replace(/\s+/g, "");
+        const match = cleanedChord.match(/^([A-Ga-g](?:#|b)?)(.*)$/);
+        if (!match) return cleanedChord;
+        const root = canonicalRoot(match[1]);
+        if (!(root in ROOTS)) return cleanedChord;
+        const rawQuality = match[2];
+        const normalizedQuality = rawQuality
+          .replace(/^maj$/i, "")
+          .replace(/^major$/i, "")
+          .replace(/^minor/i, "min")
+          .replace(/^min/i, "min");
+        const qualityKey = Object.keys(QUALITY_ALIASES).find((key) => key.toLowerCase() === normalizedQuality.toLowerCase());
+        const quality = QUALITY_ALIASES[qualityKey === undefined ? null : qualityKey];
+        return quality ? `${root}${quality.name}` : cleanedChord;
+      }
+
+      function isInvalidCatalogName(rawName) {
+        const cleanedName = String(rawName || "").trim().replace(/\s+/g, "");
+        if (!cleanedName) return false;
+        const chordLike = cleanedName.match(/^([A-Ga-g](?:#|b)?)(.*)$/);
+        if (!chordLike) return true;
+        const root = canonicalRoot(chordLike[1]);
+        if (!(root in ROOTS)) return true;
+        const rawQuality = chordLike[2];
+        const normalizedQuality = rawQuality
+          .replace(/^maj$/i, "")
+          .replace(/^major$/i, "")
+          .replace(/^minor/i, "min")
+          .replace(/^min/i, "min");
+        const qualityKey = Object.keys(QUALITY_ALIASES).find((key) => key.toLowerCase() === normalizedQuality.toLowerCase());
+        return qualityKey === undefined;
+      }
+
+      function parseNoteName(rawNote) {
+        const match = String(rawNote || "").trim().match(/^([A-Ga-g](?:#|b)?)(-?\d+)$/);
+        if (!match) return null;
+        const root = canonicalRoot(match[1]);
+        if (!(root in ROOTS)) return null;
+        const octave = Number(match[2]);
+        const midi = (octave + 1) * 12 + ROOTS[root];
+        return { label: `${root.toLowerCase()}${octave}`, midi, frequency: midiToHz(midi) };
+      }
+
+      function parseNoteList(rawNotes) {
+        const notes = String(rawNotes || "").split(",").map(parseNoteName);
+        if (!notes.length || notes.some((note) => !note)) return null;
+        return notes;
+      }
+
+      function parseChord(rawChord, baseMidi = 60) {
+        const raw = String(rawChord || "").trim();
+        if (!raw) return null;
+        const [chordPart, voicingPart] = raw.split("=").map((part) => part.trim());
+        const cleanedChord = chordPart.replace(/\s+/g, "");
+        const key = chordName(cleanedChord);
+        if (!cleanedChord) return null;
+
+        if (voicingPart !== undefined) {
+          const notes = parseNoteList(voicingPart);
+          if (!notes) return null;
+          return {
+            label: `${key}=${notes.map((note) => note.label).join(",")}`,
+            midi: notes.map((note) => note.midi),
+            frequencies: notes.map((note) => note.frequency),
+          };
+        }
+
+        const catalogNotes = state.chordCatalog[key] ? parseNoteList(state.chordCatalog[key]) : null;
+        if (catalogNotes) {
+          return {
+            label: key,
+            midi: catalogNotes.map((note) => note.midi),
+            frequencies: catalogNotes.map((note) => note.frequency),
+          };
+        }
+
+        const match = cleanedChord.match(/^([A-Ga-g](?:#|b)?)(.*)$/);
+        if (!match) return null;
+
+        const root = canonicalRoot(match[1]);
+        if (!(root in ROOTS)) return null;
+
+        const rawQuality = match[2];
+        const normalizedQuality = rawQuality
+          .replace(/^maj$/i, "")
+          .replace(/^major$/i, "")
+          .replace(/^minor/i, "min")
+          .replace(/^min/i, "min");
+        const qualityKey = Object.prototype.hasOwnProperty.call(QUALITY_ALIASES, rawQuality)
+          ? rawQuality
+          : Object.keys(QUALITY_ALIASES).find((key) => key.toLowerCase() === normalizedQuality.toLowerCase());
+        const quality = QUALITY_ALIASES[qualityKey === undefined ? null : qualityKey];
+        if (!quality) return null;
+
+        const octaveOffset = ROOTS[root] < ROOTS.C ? 12 : 0;
+        const rootMidi = baseMidi + ROOTS[root] + octaveOffset;
+        const midi = quality.intervals.map((interval) => rootMidi + interval);
+        return {
+          label: `${root}${quality.name}`,
+          midi,
+          frequencies: midi.map(midiToHz),
+        };
+      }
+
+      function ensureAudio() {
+        if (audioContext) return;
+        const Context = window.AudioContext || window.webkitAudioContext;
+        audioContext = new Context();
+        masterGain = audioContext.createGain();
+        rhythmGain = audioContext.createGain();
+        harmonyGain = audioContext.createGain();
+        drumGain = audioContext.createGain();
+        rhythmGain.connect(masterGain);
+        harmonyGain.connect(masterGain);
+        drumGain.connect(masterGain);
+        masterGain.connect(audioContext.destination);
+        applyVolumes();
+      }
+
+      function applyVolumes() {
+        if (!audioContext) return;
+        const time = audioContext.currentTime;
+        masterGain.gain.setTargetAtTime(state.volumes.master, time, 0.01);
+        rhythmGain.gain.setTargetAtTime(state.volumes.rhythm, time, 0.01);
+        harmonyGain.gain.setTargetAtTime(state.volumes.harmony, time, 0.01);
+        drumGain.gain.setTargetAtTime(state.volumes.drums, time, 0.01);
+      }
+
+      function playRhythm(chord, time) {
+        const parsed = parseChord(chord, 55);
+        if (!parsed || !audioContext) return;
+        const output = audioContext.createGain();
+        const filter = audioContext.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(1850, time);
+        output.gain.setValueAtTime(0.0001, time);
+        output.gain.exponentialRampToValueAtTime(0.55 / parsed.frequencies.length, time + 0.005);
+        output.gain.exponentialRampToValueAtTime(0.0001, time + state.strumLength);
+        output.connect(filter).connect(rhythmGain);
+
+        parsed.frequencies.forEach((frequency, index) => {
+          const osc = audioContext.createOscillator();
+          osc.type = index % 2 === 0 ? "sawtooth" : "square";
+          osc.frequency.setValueAtTime(frequency, time);
+          osc.detune.setValueAtTime((index - 1) * 4, time);
+          osc.connect(output);
+          osc.start(time);
+          osc.stop(time + state.strumLength + 0.03);
+        });
+      }
+
+      function releaseHarmony(time) {
+        if (!harmonyVoice) return;
+        harmonyVoice.gain.gain.cancelScheduledValues(time);
+        harmonyVoice.gain.gain.setTargetAtTime(0.0001, time, 0.12);
+        harmonyVoice.oscillators.forEach((osc) => osc.stop(time + 0.45));
+        harmonyVoice = null;
+      }
+
+      function playHarmony(chord, time) {
+        const parsed = parseChord(chord, 48);
+        if (!parsed || !audioContext) {
+          releaseHarmony(time);
+          return;
+        }
+        if (harmonyVoice && harmonyVoice.label === parsed.label) return;
+
+        releaseHarmony(time);
+        const gain = audioContext.createGain();
+        gain.gain.setValueAtTime(0.0001, time);
+        gain.gain.exponentialRampToValueAtTime(0.2 / parsed.frequencies.length, time + state.padAttack);
+        gain.connect(harmonyGain);
+
+        const oscillators = [];
+        parsed.frequencies.forEach((frequency) => {
+          ["sine", "triangle"].forEach((type, typeIndex) => {
+            const osc = audioContext.createOscillator();
+            osc.type = type;
+            osc.frequency.setValueAtTime(frequency, time);
+            osc.detune.setValueAtTime(typeIndex === 0 ? -3 : 3, time);
+            osc.connect(gain);
+            osc.start(time);
+            oscillators.push(osc);
+          });
+        });
+
+        harmonyVoice = { label: parsed.label, gain, oscillators };
+      }
+
+      function makeNoise(duration) {
+        const sampleRate = audioContext.sampleRate;
+        const buffer = audioContext.createBuffer(1, Math.ceil(sampleRate * duration), sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        return source;
+      }
+
+      function playDrum(trackKey, time) {
+        const scene = currentScene();
+        const level = scene.trackVolumes[trackKey] ?? 0.7;
+
+        if (trackKey === "kick") {
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(200, time);
+          osc.frequency.exponentialRampToValueAtTime(50, time + 0.14);
+          gain.gain.setValueAtTime(0.9 * level, time);
+          gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.38);
+          osc.connect(gain).connect(drumGain);
+          osc.start(time);
+          osc.stop(time + 0.4);
+          return;
+        }
+
+        if (trackKey === "snare") {
+          const noise = makeNoise(0.2);
+          const noiseFilter = audioContext.createBiquadFilter();
+          const noiseGain = audioContext.createGain();
+          noiseFilter.type = "highpass";
+          noiseFilter.frequency.setValueAtTime(900, time);
+          noiseGain.gain.setValueAtTime(0.55 * level, time);
+          noiseGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
+          noise.connect(noiseFilter).connect(noiseGain).connect(drumGain);
+          noise.start(time);
+          noise.stop(time + 0.2);
+
+          const tone = audioContext.createOscillator();
+          const toneGain = audioContext.createGain();
+          tone.type = "triangle";
+          tone.frequency.setValueAtTime(180, time);
+          toneGain.gain.setValueAtTime(0.18 * level, time);
+          toneGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
+          tone.connect(toneGain).connect(drumGain);
+          tone.start(time);
+          tone.stop(time + 0.13);
+          return;
+        }
+
+        const duration = trackKey === "openhat" ? 0.36 : 0.06;
+        const noise = makeNoise(duration);
+        const filter = audioContext.createBiquadFilter();
+        const gain = audioContext.createGain();
+        filter.type = "highpass";
+        filter.frequency.setValueAtTime(6000, time);
+        gain.gain.setValueAtTime((trackKey === "openhat" ? 0.32 : 0.24) * level, time);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        noise.connect(filter).connect(gain).connect(drumGain);
+        noise.start(time);
+        noise.stop(time + duration);
+      }
+
+      function scheduleStep(step, time) {
+        const scene = currentScene();
+        const rhythmChord = scene.rhythm[step];
+        const harmonyChord = scene.harmony[step];
+        if (rhythmChord) playRhythm(rhythmChord, time);
+        if (harmonyChord || step === 0) playHarmony(harmonyChord, time);
+        TRACKS.forEach((track) => {
+          if (scene.drums[track.key][step]) playDrum(track.key, time);
+        });
+        window.setTimeout(() => {
+          if (!state.isPlaying) return;
+          state.playhead = step;
+          renderPlayhead();
+          el.status.textContent = `Playing ${currentScene().name} - step ${step + 1}`;
+        }, Math.max(0, (time - audioContext.currentTime) * 1000));
+      }
+
+      function schedulerTick() {
+        while (nextNoteTime < audioContext.currentTime + 0.1) {
+          scheduleStep(nextStepIndex, nextNoteTime);
+          nextNoteTime += 60 / state.bpm / 4;
+          nextStepIndex = (nextStepIndex + 1) % STEPS;
+          if (nextStepIndex === 0 && state.pendingScene !== null) {
+            state.currentScene = state.pendingScene;
+            state.pendingScene = null;
+            releaseHarmony(nextNoteTime);
+            renderAll();
+          }
+        }
+      }
+
+      async function startPlayback() {
+        ensureAudio();
+        await audioContext.resume();
+        stopPlayback(false);
+        state.isPlaying = true;
+        state.playhead = -1;
+        nextStepIndex = 0;
+        nextNoteTime = audioContext.currentTime + 0.05;
+        schedulerTimer = window.setInterval(schedulerTick, 25);
+        schedulerTick();
+        renderAll();
+      }
+
+      function stopPlayback(render = true) {
+        if (schedulerTimer) window.clearInterval(schedulerTimer);
+        schedulerTimer = null;
+        state.isPlaying = false;
+        state.playhead = -1;
+        state.pendingScene = null;
+        if (audioContext) releaseHarmony(audioContext.currentTime);
+        el.status.textContent = "Stopped";
+        if (render) renderAll();
+      }
+
+      function setBpm(value) {
+        state.bpm = Math.max(60, Math.min(200, Number(value) || 100));
+        el.bpm.value = state.bpm;
+      }
+
+      function renderScenes() {
+        el.sceneTabs.replaceChildren();
+        state.scenes.forEach((scene, index) => {
+          const tab = document.createElement("button");
+          tab.textContent = `${index + 1}: ${scene.name}`;
+          tab.classList.toggle("active", index === state.currentScene);
+          tab.classList.toggle("pending", index === state.pendingScene);
+          tab.addEventListener("click", () => {
+            if (state.isPlaying && index !== state.currentScene) {
+              state.pendingScene = index;
+              el.status.textContent = `Queued ${scene.name}`;
+            } else {
+              state.currentScene = index;
+              state.pendingScene = null;
+              releaseHarmony(audioContext?.currentTime || 0);
+            }
+            renderAll();
+          });
+          tab.addEventListener("dblclick", () => {
+            const nextName = window.prompt("Scene name", scene.name);
+            if (nextName && nextName.trim()) {
+              scene.name = nextName.trim();
+              renderScenes();
+            }
+          });
+          el.sceneTabs.append(tab);
+        });
+
+        const clone = document.createElement("button");
+        clone.textContent = "+ Clone";
+        clone.disabled = state.scenes.every((scene, index) => index === state.currentScene || hasContent(scene));
+        clone.addEventListener("click", cloneCurrentScene);
+        el.sceneTabs.append(clone);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete Scene";
+        deleteButton.disabled = !hasContent(currentScene());
+        deleteButton.addEventListener("click", deleteCurrentScene);
+        el.sceneTabs.append(deleteButton);
+      }
+
+      function hasContent(scene) {
+        return scene.rhythm.some(Boolean)
+          || scene.harmony.some(Boolean)
+          || TRACKS.some((track) => scene.drums[track.key].some(Boolean));
+      }
+
+      function cloneCurrentScene() {
+        const target = state.scenes.findIndex((scene, index) => index !== state.currentScene && !hasContent(scene));
+        if (target === -1) return;
+        const source = currentScene();
+        state.scenes[target] = {
+          name: `${source.name} copy`,
+          rhythm: [...source.rhythm],
+          harmony: [...source.harmony],
+          drums: Object.fromEntries(TRACKS.map((track) => [track.key, [...source.drums[track.key]]])),
+          trackVolumes: { ...source.trackVolumes },
+        };
+        state.currentScene = target;
+        renderAll();
+      }
+
+      function deleteCurrentScene() {
+        const scene = currentScene();
+        if (!hasContent(scene)) return;
+        if (!window.confirm(`Delete ${scene.name}? This clears its chords and drums.`)) return;
+        const deletingScene = state.currentScene;
+        state.scenes[deletingScene] = createBlankScene(deletingScene);
+        if (state.pendingScene === deletingScene) state.pendingScene = null;
+        releaseHarmony(audioContext?.currentTime || 0);
+        renderAll();
+      }
+
+      function usedChordNames() {
+        const names = new Set(Object.keys(state.chordCatalog));
+        state.scenes.forEach((scene) => {
+          [...scene.rhythm, ...scene.harmony].forEach((value) => {
+            const key = chordName(value);
+            if (key) names.add(key);
+          });
+        });
+        return [...names].sort();
+      }
+
+      function openCatalog() {
+        renderCatalogRows();
+        if (typeof el.catalogDialog.showModal === "function") {
+          el.catalogDialog.showModal();
+        } else {
+          el.catalogDialog.setAttribute("open", "");
+        }
+      }
+
+      function closeCatalog() {
+        el.catalogDialog.close();
+      }
+
+      function renderCatalogRows(extraRows = []) {
+        el.catalogRows.replaceChildren();
+        const head = document.createElement("div");
+        head.className = "catalog-table-head";
+        head.innerHTML = "<span>Chord</span><span>Notes</span><span>Action</span>";
+        el.catalogRows.append(head);
+        [...usedChordNames(), ...extraRows].forEach((name) => addCatalogRow(name, state.chordCatalog[name] || ""));
+      }
+
+      function addCatalogRow(name = "", notes = "") {
+        const row = document.createElement("div");
+        row.className = "catalog-row";
+        row.innerHTML = `
+          <input data-catalog-name value="${escapeAttr(chordName(name))}" aria-label="Chord name" />
+          <input data-catalog-notes value="${escapeAttr(notes)}" aria-label="Chord notes" />
+          <button type="button">Remove</button>
+        `;
+        row.querySelector("[data-catalog-name]").addEventListener("blur", (event) => {
+          event.target.value = chordName(event.target.value);
+          updateCatalogValidity();
+        });
+        row.querySelectorAll("input").forEach((input) => {
+          input.addEventListener("input", updateCatalogValidity);
+        });
+        row.querySelector("button").addEventListener("click", () => {
+          row.remove();
+          updateCatalogValidity();
+        });
+        el.catalogRows.append(row);
+        updateCatalogValidity();
+      }
+
+      function saveCatalog() {
+        const nextCatalog = {};
+        el.catalogRows.querySelectorAll(".catalog-row").forEach((row) => {
+          const rawName = row.querySelector("[data-catalog-name]").value;
+          if (isInvalidCatalogName(rawName)) return;
+          const name = chordName(rawName);
+          if (row.querySelector("[data-catalog-name]").dataset.duplicate === "true") return;
+          const notes = row.querySelector("[data-catalog-notes]").value.trim().toLowerCase();
+          if (!name || !parseNoteList(notes)) return;
+          nextCatalog[name] = notes;
+        });
+        state.chordCatalog = nextCatalog;
+        renderChordGrid();
+        closeCatalog();
+      }
+
+      function updateCatalogRowValidity(row) {
+        const nameInput = row.querySelector("[data-catalog-name]");
+        const notesInput = row.querySelector("[data-catalog-notes]");
+        const invalidName = isInvalidCatalogName(nameInput.value);
+        const duplicateName = nameInput.dataset.duplicate === "true";
+        const invalidNotes = Boolean(notesInput.value.trim()) && !parseNoteList(notesInput.value);
+        nameInput.classList.toggle("invalid", invalidName || duplicateName);
+        nameInput.toggleAttribute("aria-invalid", invalidName || duplicateName);
+        notesInput.classList.toggle("invalid", invalidNotes);
+        notesInput.toggleAttribute("aria-invalid", invalidNotes);
+        nameInput.title = duplicateName
+          ? "Duplicate chord name. Keep only one row for this chord."
+          : (invalidName ? "Enter a chord name like C, Cm7b5, or Cmaj7." : "");
+        notesInput.title = invalidNotes ? "Use comma-separated lowercase note names like g3,c4,eb4." : "";
+      }
+
+      function updateCatalogValidity() {
+        const rows = [...el.catalogRows.querySelectorAll(".catalog-row")];
+        const counts = new Map();
+        rows.forEach((row) => {
+          const name = chordName(row.querySelector("[data-catalog-name]").value);
+          if (name && !isInvalidCatalogName(name)) counts.set(name, (counts.get(name) || 0) + 1);
+        });
+        rows.forEach((row) => {
+          const nameInput = row.querySelector("[data-catalog-name]");
+          const name = chordName(nameInput.value);
+          nameInput.dataset.duplicate = name && counts.get(name) > 1 ? "true" : "false";
+          updateCatalogRowValidity(row);
+        });
+      }
+
+      function renderChordGrid() {
+        el.chordGrid.replaceChildren();
+        const scene = currentScene();
+        for (let step = 0; step < STEPS; step += 1) {
+          const cell = document.createElement("div");
+          cell.className = "chord-cell";
+          cell.classList.toggle("beat", step % 4 === 0);
+          cell.classList.toggle("playing", step === state.playhead);
+          cell.dataset.step = String(step);
+          cell.innerHTML = `
+            <span class="step-number">${step + 1}</span>
+            <label class="layer-row rhythm">
+              <span class="layer-badge">R</span>
+              <input class="chord-input ${scene.rhythm[step] && !parseChord(scene.rhythm[step]) ? "invalid" : ""}" data-layer="rhythm" value="${escapeAttr(scene.rhythm[step])}" />
+            </label>
+            <label class="layer-row harmony">
+              <span class="layer-badge">H</span>
+              <input class="chord-input ${scene.harmony[step] && !parseChord(scene.harmony[step]) ? "invalid" : ""}" data-layer="harmony" value="${escapeAttr(scene.harmony[step])}" />
+            </label>
+          `;
+          cell.querySelectorAll(".chord-input").forEach((input) => bindChordInput(input, step));
+          el.chordGrid.append(cell);
+        }
+      }
+
+      function bindChordInput(input, step) {
+        const scene = currentScene();
+        const layer = input.dataset.layer;
+        let committedValue = scene[layer][step];
+        updateChordInputValidity(input);
+        input.addEventListener("input", () => {
+          scene[layer][step] = input.value.trim();
+          updateChordInputValidity(input);
+        });
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") input.blur();
+          if (event.key === "Escape") {
+            input.value = committedValue;
+            scene[layer][step] = committedValue;
+            updateChordInputValidity(input);
+            input.blur();
+          }
+        });
+        input.addEventListener("blur", () => {
+          const rawValue = input.value.trim();
+          const [chordPart, voicingPart] = rawValue.split("=").map((part) => part.trim());
+          const value = voicingPart === undefined
+            ? chordName(chordPart)
+            : `${chordName(chordPart)}=${voicingPart.toLowerCase()}`;
+          const parsed = parseChord(value);
+          committedValue = value && parsed ? parsed.label : value;
+          scene[layer][step] = committedValue;
+          input.value = committedValue;
+          updateChordInputValidity(input);
+        });
+      }
+
+      function updateChordInputValidity(input) {
+        const invalid = Boolean(input.value.trim()) && !parseChord(input.value);
+        input.classList.toggle("invalid", invalid);
+        input.toggleAttribute("aria-invalid", invalid);
+        input.title = invalid ? "This entry is editable but will not play until it is a supported chord or explicit voicing." : "";
+      }
+
+      function renderDrumGrid() {
+        el.drumGrid.replaceChildren();
+        const scene = currentScene();
+        TRACKS.forEach((track) => {
+          const row = document.createElement("div");
+          row.className = "drum-row";
+
+          const head = document.createElement("div");
+          head.className = "track-head";
+          head.innerHTML = `<strong>${track.label}</strong><label class="track-label">Volume <input type="range" min="0" max="1" step="0.01" value="${scene.trackVolumes[track.key]}"></label>`;
+          head.querySelector("input").addEventListener("input", (event) => {
+            scene.trackVolumes[track.key] = Number(event.target.value);
+          });
+
+          const steps = document.createElement("div");
+          steps.className = "step-grid";
+          for (let step = 0; step < STEPS; step += 1) {
+            const cell = document.createElement("button");
+            cell.type = "button";
+            cell.className = "drum-cell";
+            cell.classList.toggle("beat", step % 4 === 0);
+            cell.classList.toggle("on", scene.drums[track.key][step]);
+            cell.classList.toggle("playing", step === state.playhead);
+            cell.ariaLabel = `${track.label} step ${step + 1}`;
+            cell.addEventListener("click", () => {
+              scene.drums[track.key][step] = !scene.drums[track.key][step];
+              renderDrumGrid();
+            });
+            steps.append(cell);
+          }
+
+          row.append(head, steps);
+          el.drumGrid.append(row);
+        });
+      }
+
+      function renderPlayhead() {
+        document.querySelectorAll(".playing").forEach((node) => node.classList.remove("playing"));
+        document.querySelectorAll(`[data-step="${state.playhead}"]`).forEach((node) => node.classList.add("playing"));
+        renderDrumGrid();
+      }
+
+      function renderAll() {
+        renderScenes();
+        renderChordGrid();
+        renderDrumGrid();
+        el.bpm.value = state.bpm;
+        el.strum.value = state.strumLength;
+        el.padAttack.value = state.padAttack;
+      }
+
+      el.play.addEventListener("click", startPlayback);
+      el.stop.addEventListener("click", () => stopPlayback());
+      el.bpm.addEventListener("change", (event) => setBpm(event.target.value));
+      el.bpmDown.addEventListener("click", () => setBpm(state.bpm - 1));
+      el.bpmUp.addEventListener("click", () => setBpm(state.bpm + 1));
+      el.strum.addEventListener("input", (event) => state.strumLength = Number(event.target.value));
+      el.padAttack.addEventListener("input", (event) => state.padAttack = Number(event.target.value));
+      el.masterVolume.addEventListener("input", (event) => {
+        state.volumes.master = Number(event.target.value);
+        applyVolumes();
+      });
+      el.rhythmVolume.addEventListener("input", (event) => {
+        state.volumes.rhythm = Number(event.target.value);
+        applyVolumes();
+      });
+      el.harmonyVolume.addEventListener("input", (event) => {
+        state.volumes.harmony = Number(event.target.value);
+        applyVolumes();
+      });
+      el.drumVolume.addEventListener("input", (event) => {
+        state.volumes.drums = Number(event.target.value);
+        applyVolumes();
+      });
+      el.catalogOpen.addEventListener("click", openCatalog);
+      el.catalogClose.addEventListener("click", closeCatalog);
+      el.catalogAdd.addEventListener("click", () => addCatalogRow());
+      el.catalogSave.addEventListener("click", saveCatalog);
+      el.catalogDialog.addEventListener("cancel", closeCatalog);
+
+      renderAll();
+    </script>
+  </body>
+</html>
