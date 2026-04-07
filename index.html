@@ -75,9 +75,32 @@
       }
 
       .app {
-        width: min(1220px, calc(100vw - 2rem));
+        width: min(1440px, calc(100vw - 2rem));
         margin: 0 auto;
         padding: 2rem 0 3rem;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(17rem, 20rem) minmax(0, 1fr);
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .sidebar {
+        display: grid;
+        gap: 1rem;
+        position: sticky;
+        top: 1rem;
+        max-height: calc(100vh - 2rem);
+        overflow: auto;
+        padding-right: 0.15rem;
+      }
+
+      .sequencers {
+        display: grid;
+        gap: 1rem;
+        min-width: 0;
       }
 
       header.hero,
@@ -135,8 +158,13 @@
         padding: 1rem;
       }
 
+      .workspace .panel {
+        margin-top: 0;
+      }
+
       .controls {
-        justify-content: space-between;
+        display: grid;
+        justify-content: stretch;
       }
 
       .control-group {
@@ -166,8 +194,40 @@
         display: flex;
         justify-content: space-between;
         gap: 1rem;
-        align-items: center;
+        align-items: flex-start;
         margin-bottom: 1rem;
+      }
+
+      .sidebar h2 {
+        margin-bottom: 0.65rem;
+      }
+
+      .sidebar .control-group,
+      .sidebar .volumes,
+      .sidebar .scene-tabs {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .sidebar .control-group.transport {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .sidebar .control-group.bpm-control {
+        grid-template-columns: auto 1fr 1fr 1fr;
+        align-items: center;
+      }
+
+      .sidebar .volumes label {
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .sidebar input[type="range"],
+      .sidebar input[type="text"],
+      .sidebar button {
+        width: 100%;
       }
 
       .step-grid {
@@ -272,34 +332,177 @@
         gap: 0.55rem;
       }
 
+      .preset-panel {
+        display: none;
+        gap: 0.75rem;
+        margin: 0 0 1rem;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: #12151a;
+        padding: 0.85rem;
+      }
+
+      .preset-panel.open {
+        display: grid;
+      }
+
+      .preset-tabs,
+      .preset-buttons,
+      .dna-tags {
+        display: flex;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+      }
+
+      .preset-tabs button,
+      .preset-buttons button {
+        padding: 0.45rem 0.65rem;
+      }
+
+      .preset-description {
+        margin: 0;
+      }
+
+      .dna-tag {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.25rem 0.5rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .user-preset-tools {
+        display: grid;
+        gap: 0.7rem;
+        border-top: 1px solid var(--line);
+        padding-top: 0.8rem;
+      }
+
+      .user-preset-tools h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .user-preset-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+      }
+
+      .user-preset-actions input {
+        min-width: 14rem;
+        flex: 1;
+      }
+
+      .user-preset-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+
+      .user-preset-export {
+        width: 100%;
+        min-height: 9rem;
+        resize: vertical;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 0.78rem;
+      }
+
       .drum-row {
         display: grid;
-        grid-template-columns: 9rem 1fr;
-        gap: 0.55rem;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.28rem;
         align-items: center;
+      }
+
+      .beat-label-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.2rem;
+        align-items: center;
+      }
+
+      .drum-row .step-grid,
+      .beat-label-row .step-grid {
+        grid-template-columns: repeat(32, minmax(0.8rem, 1fr));
+        gap: 0.18rem;
+      }
+
+      .beat-label-spacer {
+        min-height: 1rem;
+      }
+
+      .beat-label {
+        color: var(--muted);
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .beat-label.downbeat {
+        color: var(--text);
+        font-weight: 800;
       }
 
       .track-head {
         display: grid;
-        gap: 0.35rem;
+        grid-template-columns: 4.5rem minmax(18rem, 1fr) auto;
+        gap: 0.5rem;
+        align-items: center;
         border: 1px solid var(--line);
         border-radius: 0.75rem;
         background: #12151a;
-        padding: 0.6rem;
+        padding: 0.4rem 0.5rem;
       }
 
       .track-head strong {
         color: var(--drum);
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+
+      .drum-pattern-input {
+        width: 100%;
+        border-color: transparent;
+        background: #0f1115;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 0.78rem;
+        letter-spacing: 0.04em;
+        padding-block: 0.32rem;
+      }
+
+      .drum-pattern-input.invalid {
+        border-color: var(--danger);
+        color: var(--danger);
+        box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.16);
+      }
+
+      .drum-pattern-help {
+        color: var(--muted);
+        font-size: 0.72rem;
+        line-height: 1.35;
+      }
+
+      .drum-volume-label {
+        display: grid;
+        grid-template-columns: auto 5rem;
+        gap: 0.35rem;
+        align-items: center;
+        white-space: nowrap;
+      }
+
+      .drum-volume-label input[type="range"] {
+        width: 5rem;
       }
 
       .drum-cell {
         display: block;
         width: 100%;
         height: 100%;
-        min-height: 2.4rem;
+        min-height: 0.65rem;
         padding: 0;
         touch-action: manipulation;
-        cursor: grab;
+        cursor: default;
       }
 
       .drum-cell.on {
@@ -307,12 +510,23 @@
         border-color: var(--drum);
       }
 
-      .drum-cell.on::after {
+      .drum-cell.ghost {
+        background: rgba(154, 164, 178, 0.1);
+        border-color: rgba(154, 164, 178, 0.72);
+      }
+
+      .drum-cell.on::after,
+      .drum-cell.ghost::after {
         content: "";
         position: absolute;
-        inset: 0.72rem;
+        inset: 0.12rem;
         border-radius: 999px;
         background: var(--drum);
+      }
+
+      .drum-cell.ghost::after {
+        opacity: 0.38;
+        transform: scale(0.72);
       }
 
       .hint {
@@ -440,8 +654,29 @@
       }
 
       @media (max-width: 820px) {
+        .app {
+          width: min(100vw - 1rem, 100%);
+          padding-top: 0.5rem;
+        }
+
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          position: static;
+          max-height: none;
+          overflow: visible;
+          padding-right: 0;
+        }
+
         .step-grid {
           grid-template-columns: repeat(8, minmax(2.6rem, 1fr));
+        }
+
+        .drum-row .step-grid,
+        .beat-label-row .step-grid {
+          grid-template-columns: repeat(16, minmax(1rem, 1fr));
         }
 
         .catalog-row,
@@ -451,6 +686,18 @@
 
         .drum-row {
           grid-template-columns: 1fr;
+        }
+
+        .beat-label-row {
+          grid-template-columns: 1fr;
+        }
+
+        .track-head {
+          grid-template-columns: 1fr;
+        }
+
+        .beat-label-spacer {
+          display: none;
         }
 
         header.hero,
@@ -475,57 +722,75 @@
         <div id="status" class="status-pill">Stopped</div>
       </header>
 
-      <section class="panel controls" aria-label="Global controls">
-        <div class="control-group">
-          <button id="play">Play</button>
-          <button id="stop">Stop</button>
-          <label for="bpm">BPM</label>
-          <button id="bpm-down" aria-label="Decrease BPM">--</button>
-          <input id="bpm" type="number" min="60" max="200" step="1" value="100" />
-          <button id="bpm-up" aria-label="Increase BPM">++</button>
-        </div>
-        <div class="control-group">
-          <label for="strum">Strum Length</label>
-          <input id="strum" type="range" min="0.05" max="0.25" step="0.01" value="0.12" />
-          <label for="pad-attack">Pad Attack</label>
-          <input id="pad-attack" type="range" min="0.02" max="0.4" step="0.01" value="0.08" />
-        </div>
-        <div class="volumes" aria-label="Volumes">
-          <label>Master <input id="master-volume" type="range" min="0" max="1" step="0.01" value="0.8" /></label>
-          <label>Rhythm <input id="rhythm-volume" type="range" min="0" max="1" step="0.01" value="0.55" /></label>
-          <label>Harmony <input id="harmony-volume" type="range" min="0" max="1" step="0.01" value="0.35" /></label>
-          <label>Drums <input id="drum-volume" type="range" min="0" max="1" step="0.01" value="0.75" /></label>
-        </div>
-      </section>
+      <div class="workspace">
+        <aside class="sidebar" aria-label="Controls and presets">
+          <section class="panel controls" aria-label="Transport controls">
+            <h2>Controls</h2>
+            <div class="control-group transport">
+              <button id="play">Play</button>
+              <button id="stop">Stop</button>
+            </div>
+            <div class="control-group bpm-control">
+              <label for="bpm">BPM</label>
+              <button id="bpm-down" aria-label="Decrease BPM">--</button>
+              <input id="bpm" type="number" min="60" max="200" step="1" value="100" />
+              <button id="bpm-up" aria-label="Increase BPM">++</button>
+            </div>
+            <div class="control-group">
+              <label for="strum">Strum Length</label>
+              <input id="strum" type="range" min="0.05" max="0.25" step="0.01" value="0.12" />
+              <label for="pad-attack">Pad Attack</label>
+              <input id="pad-attack" type="range" min="0.02" max="0.4" step="0.01" value="0.08" />
+            </div>
+            <div class="volumes" aria-label="Volumes">
+              <label>Master <input id="master-volume" type="range" min="0" max="1" step="0.01" value="0.8" /></label>
+              <label>Rhythm <input id="rhythm-volume" type="range" min="0" max="1" step="0.01" value="0.55" /></label>
+              <label>Harmony <input id="harmony-volume" type="range" min="0" max="1" step="0.01" value="0.35" /></label>
+              <label>Drums <input id="drum-volume" type="range" min="0" max="1" step="0.01" value="0.75" /></label>
+            </div>
+          </section>
 
-      <section class="panel" aria-label="Scenes">
-        <div class="scene-tabs" id="scene-tabs"></div>
-      </section>
+          <section class="panel" aria-label="Scenes">
+            <h2>Scenes</h2>
+            <div class="scene-tabs" id="scene-tabs"></div>
+          </section>
 
-      <section class="panel">
-        <div class="grid-head">
-          <div>
-            <h2>Chord Grid</h2>
-            <p>Edit Rhythm and Harmony directly in the stacked fields. Empty or invalid entries stay editable and do not play.</p>
-          </div>
-          <div class="control-group">
-            <button id="sound-open">Sound Catalog</button>
-            <button id="catalog-open">Chord Catalog</button>
-          </div>
-        </div>
-        <div id="chord-grid" class="step-grid" aria-label="Chord steps"></div>
-        <p class="hint">Use chord symbols in the grid, then configure their note lists in the catalog. Inline voicings like Cm=g3,c4,eb4 still work.</p>
-      </section>
+          <section class="panel" aria-label="Catalogs and saved patterns">
+            <h2>Builders</h2>
+            <div class="control-group">
+              <button id="sound-open">Sound Catalog</button>
+              <button id="catalog-open">Chord Catalog</button>
+              <button id="chord-presets-toggle">Progressions</button>
+              <button id="drum-presets-toggle">Rhythms</button>
+            </div>
+            <div id="chord-preset-panel" class="preset-panel" aria-label="Chord progression preset builder"></div>
+            <div id="drum-preset-panel" class="preset-panel" aria-label="Drum preset browser"></div>
+          </section>
+        </aside>
 
-      <section class="panel">
-        <div class="grid-head">
-          <div>
-            <h2>Drum Grid</h2>
-            <p>Four synthesized drum lanes share the same 32-step clock.</p>
-          </div>
+        <div class="sequencers">
+          <section class="panel">
+            <div class="grid-head">
+              <div>
+                <h2>Chord Grid</h2>
+                <p>Edit Rhythm and Harmony directly in the stacked fields. Empty or invalid entries stay editable and do not play.</p>
+              </div>
+            </div>
+            <div id="chord-grid" class="step-grid" aria-label="Chord steps"></div>
+            <p class="hint">Use chord symbols in the grid, then configure their note lists in the catalog. Inline voicings like Cm=g3,c4,eb4 still work.</p>
+          </section>
+
+          <section class="panel">
+            <div class="grid-head">
+              <div>
+                <h2>Drum Grid</h2>
+                <p>Four synthesized drum lanes share the same 32-step clock.</p>
+              </div>
+            </div>
+            <div id="drum-grid" class="drum-grid" aria-label="Drum steps"></div>
+          </section>
         </div>
-        <div id="drum-grid" class="drum-grid" aria-label="Drum steps"></div>
-      </section>
+      </div>
     </main>
 
     <dialog id="catalog-dialog" class="catalog-dialog">
@@ -609,6 +874,8 @@
       };
       const PRESET_NAME = "default";
       const STORAGE_KEY = `skanker:preset:${PRESET_NAME}:v1`;
+      const USER_DRUM_PRESETS_KEY = "skanker:drum-presets:v1";
+      const USER_CHORD_PRESETS_KEY = "skanker:chord-progressions:v1";
       const WEBAUDIOFONT_PLAYER_URL = "https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js";
       const SOUND_CATALOG = {
         internal: { label: "Internal Synth" },
@@ -652,6 +919,7 @@
         hihat: 42,
         openhat: 46,
       };
+      const DRUM_PRESETS = {};
 
       const state = {
         bpm: 100,
@@ -661,6 +929,15 @@
         isPlaying: false,
         strumLength: 0.12,
         padAttack: 0.08,
+        drumPresetPanelOpen: false,
+        drumPresetGenre: "reggae",
+        activeDrumPreset: null,
+        userDrumPresets: [],
+        userDrumPresetExport: "",
+        chordPresetPanelOpen: false,
+        activeChordPreset: null,
+        userChordPresets: [],
+        userChordPresetExport: "",
         sounds: {
           rhythm: "internal",
           harmony: "internal",
@@ -700,7 +977,11 @@
         drumSounds: Object.fromEntries([...document.querySelectorAll("[data-drum-sound]")].map((select) => [select.dataset.drumSound, select])),
         sceneTabs: document.getElementById("scene-tabs"),
         chordGrid: document.getElementById("chord-grid"),
+        chordPresetsToggle: document.getElementById("chord-presets-toggle"),
+        chordPresetPanel: document.getElementById("chord-preset-panel"),
         drumGrid: document.getElementById("drum-grid"),
+        drumPresetsToggle: document.getElementById("drum-presets-toggle"),
+        drumPresetPanel: document.getElementById("drum-preset-panel"),
         masterVolume: document.getElementById("master-volume"),
         rhythmVolume: document.getElementById("rhythm-volume"),
         harmonyVolume: document.getElementById("harmony-volume"),
@@ -726,10 +1007,10 @@
           scene.rhythm[28] = "F7";
           scene.harmony[0] = "C";
           scene.harmony[16] = "F";
-          for (let step = 0; step < STEPS; step += 4) scene.drums.kick[step] = true;
-          [8, 24].forEach((step) => scene.drums.snare[step] = true);
-          for (let step = 2; step < STEPS; step += 4) scene.drums.hihat[step] = true;
-          [15, 31].forEach((step) => scene.drums.openhat[step] = true);
+          for (let step = 0; step < STEPS; step += 4) scene.drums.kick[step] = 1;
+          [8, 24].forEach((step) => scene.drums.snare[step] = 1);
+          for (let step = 2; step < STEPS; step += 4) scene.drums.hihat[step] = 1;
+          [15, 31].forEach((step) => scene.drums.openhat[step] = 1);
         }
 
         return scene;
@@ -740,7 +1021,7 @@
           name: `Scene ${index + 1}`,
           rhythm: Array(STEPS).fill(""),
           harmony: Array(STEPS).fill(""),
-          drums: Object.fromEntries(TRACKS.map((track) => [track.key, Array(STEPS).fill(false)])),
+          drums: Object.fromEntries(TRACKS.map((track) => [track.key, Array(STEPS).fill(0)])),
           trackVolumes: Object.fromEntries(TRACKS.map((track) => [track.key, track.volume])),
         };
       }
@@ -767,38 +1048,58 @@
         return `${letter}${accidental}`;
       }
 
-      function chordName(rawChord) {
-        const cleanedChord = String(rawChord || "").split("=")[0].trim().replace(/\s+/g, "");
-        const match = cleanedChord.match(/^([A-Ga-g](?:#|b)?)(.*)$/);
-        if (!match) return cleanedChord;
-        const root = canonicalRoot(match[1]);
-        if (!(root in ROOTS)) return cleanedChord;
-        const rawQuality = match[2];
-        const normalizedQuality = rawQuality
+      function normalizeQuality(rawQuality) {
+        return String(rawQuality || "")
           .replace(/^maj$/i, "")
           .replace(/^major$/i, "")
           .replace(/^minor/i, "min")
           .replace(/^min/i, "min");
-        const qualityKey = Object.keys(QUALITY_ALIASES).find((key) => key.toLowerCase() === normalizedQuality.toLowerCase());
-        const quality = QUALITY_ALIASES[qualityKey === undefined ? null : qualityKey];
-        return quality ? `${root}${quality.name}` : cleanedChord;
+      }
+
+      function qualityFromToken(rawQuality) {
+        const normalizedQuality = normalizeQuality(rawQuality);
+        const qualityKey = Object.prototype.hasOwnProperty.call(QUALITY_ALIASES, rawQuality)
+          ? rawQuality
+          : Object.keys(QUALITY_ALIASES).find((key) => key.toLowerCase() === normalizedQuality.toLowerCase());
+        return QUALITY_ALIASES[qualityKey === undefined ? null : qualityKey] || null;
+      }
+
+      function parseChordToken(rawToken) {
+        const token = String(rawToken || "").trim();
+        if (!token || /\s/.test(token)) return null;
+        const parts = token.split("/");
+        if (parts.length > 2) return null;
+        const chordMatch = parts[0].match(/^([A-Ga-g](?:#|b)?)(.*)$/);
+        if (!chordMatch) return null;
+        const root = canonicalRoot(chordMatch[1]);
+        if (!(root in ROOTS)) return null;
+        const quality = qualityFromToken(chordMatch[2]);
+        if (!quality) return null;
+        let bass = null;
+        if (parts[1] !== undefined) {
+          const bassMatch = parts[1].match(/^([A-Ga-g](?:#|b)?)$/);
+          if (!bassMatch) return null;
+          bass = canonicalRoot(bassMatch[1]);
+          if (!(bass in ROOTS)) return null;
+        }
+        return {
+          root,
+          quality,
+          bass,
+          label: `${root}${quality.name}${bass ? `/${bass}` : ""}`,
+          baseLabel: `${root}${quality.name}`,
+        };
+      }
+
+      function chordName(rawChord) {
+        const cleanedChord = String(rawChord || "").split("=")[0].trim();
+        return parseChordToken(cleanedChord)?.label || cleanedChord;
       }
 
       function isInvalidCatalogName(rawName) {
-        const cleanedName = String(rawName || "").trim().replace(/\s+/g, "");
+        const cleanedName = String(rawName || "").trim();
         if (!cleanedName) return false;
-        const chordLike = cleanedName.match(/^([A-Ga-g](?:#|b)?)(.*)$/);
-        if (!chordLike) return true;
-        const root = canonicalRoot(chordLike[1]);
-        if (!(root in ROOTS)) return true;
-        const rawQuality = chordLike[2];
-        const normalizedQuality = rawQuality
-          .replace(/^maj$/i, "")
-          .replace(/^major$/i, "")
-          .replace(/^minor/i, "min")
-          .replace(/^min/i, "min");
-        const qualityKey = Object.keys(QUALITY_ALIASES).find((key) => key.toLowerCase() === normalizedQuality.toLowerCase());
-        return qualityKey === undefined;
+        return !parseChordToken(cleanedName);
       }
 
       function parseNoteName(rawNote) {
@@ -817,13 +1118,19 @@
         return notes;
       }
 
+      function bassMidi(root, referenceMidi) {
+        let midi = Math.floor(referenceMidi / 12) * 12 + ROOTS[root];
+        while (midi > referenceMidi) midi -= 12;
+        return midi;
+      }
+
       function parseChord(rawChord, baseMidi = 60) {
         const raw = String(rawChord || "").trim();
         if (!raw) return null;
         const [chordPart, voicingPart] = raw.split("=").map((part) => part.trim());
-        const cleanedChord = chordPart.replace(/\s+/g, "");
-        const key = chordName(cleanedChord);
-        if (!cleanedChord) return null;
+        const chordToken = parseChordToken(chordPart);
+        if (!chordToken) return null;
+        const key = chordToken.label;
 
         if (voicingPart !== undefined) {
           const notes = parseNoteList(voicingPart);
@@ -835,38 +1142,23 @@
           };
         }
 
-        const catalogNotes = state.chordCatalog[key] ? parseNoteList(state.chordCatalog[key]) : null;
+        const catalogKey = state.chordCatalog[key] ? key : chordToken.baseLabel;
+        const catalogNotes = state.chordCatalog[catalogKey] ? parseNoteList(state.chordCatalog[catalogKey]) : null;
         if (catalogNotes) {
+          const midi = catalogNotes.map((note) => note.midi);
+          if (chordToken.bass) midi.unshift(bassMidi(chordToken.bass, Math.min(...midi)));
           return {
             label: key,
-            midi: catalogNotes.map((note) => note.midi),
-            frequencies: catalogNotes.map((note) => note.frequency),
+            midi,
+            frequencies: midi.map(midiToHz),
           };
         }
 
-        const match = cleanedChord.match(/^([A-Ga-g](?:#|b)?)(.*)$/);
-        if (!match) return null;
-
-        const root = canonicalRoot(match[1]);
-        if (!(root in ROOTS)) return null;
-
-        const rawQuality = match[2];
-        const normalizedQuality = rawQuality
-          .replace(/^maj$/i, "")
-          .replace(/^major$/i, "")
-          .replace(/^minor/i, "min")
-          .replace(/^min/i, "min");
-        const qualityKey = Object.prototype.hasOwnProperty.call(QUALITY_ALIASES, rawQuality)
-          ? rawQuality
-          : Object.keys(QUALITY_ALIASES).find((key) => key.toLowerCase() === normalizedQuality.toLowerCase());
-        const quality = QUALITY_ALIASES[qualityKey === undefined ? null : qualityKey];
-        if (!quality) return null;
-
-        const octaveOffset = ROOTS[root] < ROOTS.C ? 12 : 0;
-        const rootMidi = baseMidi + ROOTS[root] + octaveOffset;
-        const midi = quality.intervals.map((interval) => rootMidi + interval);
+        const rootMidi = baseMidi + ROOTS[chordToken.root];
+        const midi = chordToken.quality.intervals.map((interval) => rootMidi + interval);
+        if (chordToken.bass) midi.unshift(bassMidi(chordToken.bass, rootMidi));
         return {
-          label: `${root}${quality.name}`,
+          label: key,
           midi,
           frequencies: midi.map(midiToHz),
         };
@@ -1092,9 +1384,9 @@
         return source;
       }
 
-      function playDrum(trackKey, time) {
+      function playDrum(trackKey, time, velocity = 1) {
         const scene = currentScene();
-        const level = scene.trackVolumes[trackKey] ?? 0.7;
+        const level = (scene.trackVolumes[trackKey] ?? 0.7) * (velocity >= 1 ? 1 : 0.28);
         const drumSound = drumSoundDefinition(state.sounds.drums[trackKey], trackKey);
         const drumPreset = drumSound?.presetName ? webAudioFontPresets.get(drumSound.presetName) : null;
         if (webAudioFontPlayer && drumPreset) {
@@ -1160,7 +1452,8 @@
         if (rhythmChord) playRhythm(rhythmChord, time);
         if (harmonyChord || step === 0) playHarmony(harmonyChord, time);
         TRACKS.forEach((track) => {
-          if (scene.drums[track.key][step]) playDrum(track.key, time);
+          const velocity = normalizeDrumValue(scene.drums[track.key][step]);
+          if (velocity > 0) playDrum(track.key, time, velocity);
         });
         window.setTimeout(() => {
           if (!state.isPlaying) return;
@@ -1231,6 +1524,45 @@
         return source;
       }
 
+      function normalizeDrumValue(value) {
+        if (value === true) return 1;
+        if (value === false || value === null || value === undefined) return 0;
+        const number = Number(value);
+        if (!Number.isFinite(number) || number <= 0) return 0;
+        return number >= 1 ? 1 : 0.5;
+      }
+
+      function drumValueToSymbol(value) {
+        const normalized = normalizeDrumValue(value);
+        if (normalized >= 1) return "x";
+          if (normalized > 0) return "_";
+        return "-";
+      }
+
+      function formatDrumPattern(values) {
+        const symbols = fixedLengthArray(values, 0).map(drumValueToSymbol);
+        const groups = [];
+        for (let index = 0; index < symbols.length; index += 4) {
+          groups.push(symbols.slice(index, index + 4).join(""));
+        }
+        return `${groups.slice(0, 4).join(" ")} | ${groups.slice(4).join(" ")}`;
+      }
+
+      function parseDrumPattern(value) {
+        const raw = String(value || "").trim().toLowerCase();
+        if (!raw) return null;
+        if (/[^x_\-\s|.0]/.test(raw)) return null;
+        const symbols = [...raw.replace(/[\s|]/g, "").replace(/[.0]/g, "-")];
+        if (!symbols.length || symbols.length > STEPS || STEPS % symbols.length !== 0) return null;
+        const expanded = [];
+        while (expanded.length < STEPS) expanded.push(...symbols);
+        return expanded.slice(0, STEPS).map((symbol) => {
+          if (symbol === "x") return 1;
+          if (symbol === "_") return 0.5;
+          return 0;
+        });
+      }
+
       function normalizeScene(rawScene, index) {
         const blankScene = createBlankScene(index);
         const source = rawScene && typeof rawScene === "object" ? rawScene : {};
@@ -1240,13 +1572,125 @@
           harmony: fixedLengthArray(source.harmony, "").map((value) => String(value || "")),
           drums: Object.fromEntries(TRACKS.map((track) => [
             track.key,
-            fixedLengthArray(source.drums?.[track.key], false).map(Boolean),
+            fixedLengthArray(source.drums?.[track.key], 0).map(normalizeDrumValue),
           ])),
           trackVolumes: Object.fromEntries(TRACKS.map((track) => [
             track.key,
             clampNumber(source.trackVolumes?.[track.key], 0, 1, blankScene.trackVolumes[track.key]),
           ])),
         };
+      }
+
+      function normalizeUserDrumPreset(source) {
+        if (!source || typeof source !== "object") return null;
+        const name = typeof source.name === "string" ? source.name.trim() : "";
+        if (!name) return null;
+        const rawId = typeof source.id === "string" && source.id.trim() ? source.id.trim() : name;
+        const id = rawId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `rhythm-${Date.now()}`;
+        return {
+          id,
+          name,
+          bpm: clampNumber(source.bpm, 60, 200, state.bpm),
+          createdAt: typeof source.createdAt === "string" ? source.createdAt : new Date().toISOString(),
+          updatedAt: typeof source.updatedAt === "string" ? source.updatedAt : new Date().toISOString(),
+          drums: Object.fromEntries(TRACKS.map((track) => [
+            track.key,
+            fixedLengthArray(source.drums?.[track.key], 0).map(normalizeDrumValue),
+          ])),
+        };
+      }
+
+      function currentDrumPattern() {
+        const scene = currentScene();
+        return Object.fromEntries(TRACKS.map((track) => [
+          track.key,
+          fixedLengthArray(scene.drums[track.key], 0).map(normalizeDrumValue),
+        ]));
+      }
+
+      function userDrumPresetExportPayload() {
+        return {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          presets: state.userDrumPresets.map((preset) => normalizeUserDrumPreset(preset)).filter(Boolean),
+        };
+      }
+
+      function loadUserDrumPresets() {
+        try {
+          const rawPresets = window.localStorage.getItem(USER_DRUM_PRESETS_KEY);
+          if (!rawPresets) return;
+          const parsed = JSON.parse(rawPresets);
+          const rawList = Array.isArray(parsed) ? parsed : parsed?.presets;
+          state.userDrumPresets = Array.isArray(rawList) ? rawList.map(normalizeUserDrumPreset).filter(Boolean) : [];
+        } catch (error) {
+          console.warn("Could not load user drum presets", error);
+        }
+      }
+
+      function saveUserDrumPresets() {
+        try {
+          window.localStorage.setItem(USER_DRUM_PRESETS_KEY, JSON.stringify(userDrumPresetExportPayload()));
+        } catch (error) {
+          console.warn("Could not save user drum presets", error);
+        }
+      }
+
+      function normalizeUserChordPreset(source) {
+        if (!source || typeof source !== "object") return null;
+        const name = typeof source.name === "string" ? source.name.trim() : "";
+        if (!name) return null;
+        const rawId = typeof source.id === "string" && source.id.trim() ? source.id.trim() : name;
+        const id = rawId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `progression-${Date.now()}`;
+        const chordCatalog = source.chordCatalog && typeof source.chordCatalog === "object"
+          ? Object.fromEntries(Object.entries(source.chordCatalog).map(([chord, notes]) => [chordName(chord), String(notes || "")]).filter(([chord]) => chord))
+          : {};
+        return {
+          id,
+          name,
+          createdAt: typeof source.createdAt === "string" ? source.createdAt : new Date().toISOString(),
+          updatedAt: typeof source.updatedAt === "string" ? source.updatedAt : new Date().toISOString(),
+          rhythm: fixedLengthArray(source.rhythm, "").map((value) => String(value || "").trim()),
+          harmony: fixedLengthArray(source.harmony, "").map((value) => String(value || "").trim()),
+          chordCatalog,
+        };
+      }
+
+      function currentChordPattern() {
+        const scene = currentScene();
+        return {
+          rhythm: fixedLengthArray(scene.rhythm, "").map((value) => String(value || "").trim()),
+          harmony: fixedLengthArray(scene.harmony, "").map((value) => String(value || "").trim()),
+          chordCatalog: { ...state.chordCatalog },
+        };
+      }
+
+      function userChordPresetExportPayload() {
+        return {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          progressions: state.userChordPresets.map((preset) => normalizeUserChordPreset(preset)).filter(Boolean),
+        };
+      }
+
+      function loadUserChordPresets() {
+        try {
+          const rawPresets = window.localStorage.getItem(USER_CHORD_PRESETS_KEY);
+          if (!rawPresets) return;
+          const parsed = JSON.parse(rawPresets);
+          const rawList = Array.isArray(parsed) ? parsed : parsed?.progressions;
+          state.userChordPresets = Array.isArray(rawList) ? rawList.map(normalizeUserChordPreset).filter(Boolean) : [];
+        } catch (error) {
+          console.warn("Could not load user chord progressions", error);
+        }
+      }
+
+      function saveUserChordPresets() {
+        try {
+          window.localStorage.setItem(USER_CHORD_PRESETS_KEY, JSON.stringify(userChordPresetExportPayload()));
+        } catch (error) {
+          console.warn("Could not save user chord progressions", error);
+        }
       }
 
       function presetSnapshot() {
@@ -1257,6 +1701,11 @@
           currentScene: state.currentScene,
           strumLength: state.strumLength,
           padAttack: state.padAttack,
+          drumPresetPanelOpen: state.drumPresetPanelOpen,
+          drumPresetGenre: state.drumPresetGenre,
+          activeDrumPreset: state.activeDrumPreset ? { ...state.activeDrumPreset } : null,
+          chordPresetPanelOpen: state.chordPresetPanelOpen,
+          activeChordPreset: state.activeChordPreset ? { ...state.activeChordPreset } : null,
           sounds: { ...state.sounds },
           volumes: { ...state.volumes },
           chordCatalog: { ...state.chordCatalog },
@@ -1283,6 +1732,21 @@
           state.currentScene = Math.trunc(clampNumber(preset.currentScene, 0, state.scenes.length - 1, 0));
           state.strumLength = clampNumber(preset.strumLength, 0.05, 0.25, state.strumLength);
           state.padAttack = clampNumber(preset.padAttack, 0.02, 0.4, state.padAttack);
+          state.drumPresetPanelOpen = Boolean(preset.drumPresetPanelOpen);
+          state.drumPresetGenre = Object.prototype.hasOwnProperty.call(DRUM_PRESETS, preset.drumPresetGenre)
+            ? preset.drumPresetGenre
+            : state.drumPresetGenre;
+          state.chordPresetPanelOpen = Boolean(preset.chordPresetPanelOpen);
+          const savedActivePreset = preset.activeDrumPreset;
+          const hasBuiltInPreset = savedActivePreset && DRUM_PRESETS[savedActivePreset.genre]?.patterns[savedActivePreset.preset];
+          const hasUserPreset = savedActivePreset?.genre === "user" && state.userDrumPresets.some((entry) => entry.id === savedActivePreset.preset);
+          state.activeDrumPreset = hasBuiltInPreset || hasUserPreset
+            ? { genre: savedActivePreset.genre, preset: savedActivePreset.preset }
+            : null;
+          const savedActiveChordPreset = preset.activeChordPreset;
+          state.activeChordPreset = savedActiveChordPreset?.type === "user" && state.userChordPresets.some((entry) => entry.id === savedActiveChordPreset.preset)
+            ? { type: "user", preset: savedActiveChordPreset.preset }
+            : null;
           state.sounds = {
             rhythm: Object.prototype.hasOwnProperty.call(SOUND_CATALOG, preset.sounds?.rhythm)
               ? preset.sounds.rhythm
@@ -1305,6 +1769,15 @@
         } catch (error) {
           console.warn("Could not load Skanker preset", error);
         }
+      }
+
+      function applyUrlPresetIdentity() {
+        const params = new URLSearchParams(window.location.search);
+        const genre = params.get("dp_genre");
+        const preset = params.get("dp_preset");
+        if (!genre || !preset || !DRUM_PRESETS[genre]?.patterns[preset]) return;
+        state.drumPresetGenre = genre;
+        state.activeDrumPreset = { genre, preset };
       }
 
       function renderScenes() {
@@ -1396,12 +1869,6 @@
         moveArrayItem(scene.harmony, fromStep, toStep);
         savePreset();
         renderAll();
-      }
-
-      function moveDrumStep(trackKey, fromStep, toStep) {
-        moveArrayItem(currentScene().drums[trackKey], fromStep, toStep);
-        savePreset();
-        renderDrumGrid();
       }
 
       function bindStepDrag(cell, dragData, onMove) {
@@ -1526,6 +1993,143 @@
         closeCatalog();
       }
 
+      function saveCurrentUserChordPreset(name) {
+        const normalizedName = name.trim();
+        if (!normalizedName) {
+          el.status.textContent = "Name progression before saving";
+          return;
+        }
+        const existingIndex = state.userChordPresets.findIndex((preset) => preset.name.toLowerCase() === normalizedName.toLowerCase());
+        const existingPreset = existingIndex >= 0 ? state.userChordPresets[existingIndex] : null;
+        const pattern = currentChordPattern();
+        const now = new Date().toISOString();
+        const preset = normalizeUserChordPreset({
+          id: existingPreset?.id || `${normalizedName}-${Date.now()}`,
+          name: normalizedName,
+          createdAt: existingPreset?.createdAt || now,
+          updatedAt: now,
+          rhythm: pattern.rhythm,
+          harmony: pattern.harmony,
+          chordCatalog: pattern.chordCatalog,
+        });
+        if (!preset) return;
+        if (existingIndex >= 0) {
+          state.userChordPresets.splice(existingIndex, 1, preset);
+        } else {
+          state.userChordPresets.push(preset);
+        }
+        state.activeChordPreset = { type: "user", preset: preset.id };
+        state.userChordPresetExport = "";
+        saveUserChordPresets();
+        savePreset();
+        renderAll();
+      }
+
+      function loadUserChordPreset(id) {
+        const preset = state.userChordPresets.find((entry) => entry.id === id);
+        if (!preset) return;
+        const scene = currentScene();
+        scene.rhythm = fixedLengthArray(preset.rhythm, "").map((value) => String(value || "").trim());
+        scene.harmony = fixedLengthArray(preset.harmony, "").map((value) => String(value || "").trim());
+        state.chordCatalog = { ...state.chordCatalog, ...preset.chordCatalog };
+        state.activeChordPreset = { type: "user", preset: preset.id };
+        savePreset();
+        renderAll();
+      }
+
+      function deleteUserChordPreset(id) {
+        const index = state.userChordPresets.findIndex((preset) => preset.id === id);
+        if (index < 0) return;
+        state.userChordPresets.splice(index, 1);
+        if (state.activeChordPreset?.type === "user" && state.activeChordPreset.preset === id) {
+          state.activeChordPreset = null;
+        }
+        state.userChordPresetExport = "";
+        saveUserChordPresets();
+        savePreset();
+        renderAll();
+      }
+
+      function renderChordPresetPanel() {
+        el.chordPresetPanel.replaceChildren();
+        el.chordPresetPanel.classList.toggle("open", state.chordPresetPanelOpen);
+        el.chordPresetsToggle.classList.toggle("active", state.chordPresetPanelOpen);
+        if (!state.chordPresetPanelOpen) return;
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "user-preset-tools";
+
+        const title = document.createElement("h3");
+        title.textContent = "My Progressions";
+
+        const description = document.createElement("p");
+        description.className = "preset-description";
+        description.textContent = "Save the current Rhythm and Harmony grid separately from drums, then load it with any rhythm pattern later.";
+
+        const actions = document.createElement("div");
+        actions.className = "user-preset-actions";
+
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.placeholder = "Name this progression";
+        nameInput.autocomplete = "off";
+
+        const saveButton = document.createElement("button");
+        saveButton.type = "button";
+        saveButton.textContent = "Save Current";
+        saveButton.addEventListener("click", () => saveCurrentUserChordPreset(nameInput.value));
+        nameInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") saveCurrentUserChordPreset(nameInput.value);
+        });
+
+        const exportButton = document.createElement("button");
+        exportButton.type = "button";
+        exportButton.textContent = "Export JSON";
+        exportButton.addEventListener("click", () => {
+          state.userChordPresetExport = JSON.stringify(userChordPresetExportPayload(), null, 2);
+          renderChordPresetPanel();
+        });
+
+        actions.append(nameInput, saveButton, exportButton);
+
+        const list = document.createElement("div");
+        list.className = "user-preset-list";
+        if (!state.userChordPresets.length) {
+          const emptyState = document.createElement("span");
+          emptyState.className = "hint";
+          emptyState.textContent = "Save hand-built progressions here before promoting the best ones into built-in presets.";
+          list.append(emptyState);
+        } else {
+          state.userChordPresets.forEach((preset) => {
+            const loadButton = document.createElement("button");
+            loadButton.type = "button";
+            loadButton.textContent = preset.name;
+            loadButton.classList.toggle("active", state.activeChordPreset?.type === "user" && state.activeChordPreset.preset === preset.id);
+            loadButton.addEventListener("click", () => loadUserChordPreset(preset.id));
+
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.textContent = "Delete";
+            deleteButton.setAttribute("aria-label", `Delete ${preset.name}`);
+            deleteButton.addEventListener("click", () => deleteUserChordPreset(preset.id));
+
+            list.append(loadButton, deleteButton);
+          });
+        }
+
+        wrapper.append(title, description, actions, list);
+
+        if (state.userChordPresetExport) {
+          const exportText = document.createElement("textarea");
+          exportText.className = "user-preset-export";
+          exportText.readOnly = true;
+          exportText.value = state.userChordPresetExport;
+          wrapper.append(exportText);
+        }
+
+        el.chordPresetPanel.append(wrapper);
+      }
+
       function updateCatalogRowValidity(row) {
         const nameInput = row.querySelector("[data-catalog-name]");
         const notesInput = row.querySelector("[data-catalog-notes]");
@@ -1625,17 +2229,73 @@
         input.title = invalid ? "This entry is editable but will not play until it is a supported chord or explicit voicing." : "";
       }
 
+      function renderDrumGridCells() {
+        const scene = currentScene();
+        document.querySelectorAll(".drum-cell").forEach((cell) => {
+          const track = cell.dataset.track;
+          const step = Number(cell.dataset.step);
+          if (!track || !Number.isInteger(step)) return;
+          const drumValue = normalizeDrumValue(scene.drums[track]?.[step]);
+          const trackLabel = TRACKS.find((entry) => entry.key === track)?.label || track;
+          cell.classList.toggle("on", drumValue === 1);
+          cell.classList.toggle("ghost", drumValue === 0.5);
+          cell.classList.toggle("playing", step === state.playhead);
+          cell.ariaLabel = `${trackLabel} step ${step + 1} ${drumValue === 1 ? "hit" : (drumValue === 0.5 ? "ghost" : "off")}`;
+        });
+      }
+
       function renderDrumGrid() {
         el.drumGrid.replaceChildren();
         const scene = currentScene();
+        const beatLabels = document.createElement("div");
+        beatLabels.className = "beat-label-row";
+        beatLabels.innerHTML = '<span class="beat-label-spacer" aria-hidden="true"></span>';
+        const labelSteps = document.createElement("div");
+        labelSteps.className = "step-grid";
+        for (let step = 0; step < STEPS; step += 1) {
+          const label = document.createElement("span");
+          const subdivision = step % 4;
+          label.className = "beat-label";
+          label.classList.toggle("downbeat", subdivision === 0);
+          label.textContent = subdivision === 0 ? String((Math.floor(step / 4) % 4) + 1) : ["e", "+", "a"][subdivision - 1];
+          labelSteps.append(label);
+        }
+        beatLabels.append(labelSteps);
+        el.drumGrid.append(beatLabels);
         TRACKS.forEach((track) => {
           const row = document.createElement("div");
           row.className = "drum-row";
 
           const head = document.createElement("div");
           head.className = "track-head";
-          head.innerHTML = `<strong>${track.label}</strong><label class="track-label">Volume <input type="range" min="0" max="1" step="0.01" value="${scene.trackVolumes[track.key]}"></label>`;
-          head.querySelector("input").addEventListener("input", (event) => {
+          head.innerHTML = `
+            <strong>${track.label}</strong>
+            <input class="drum-pattern-input" value="${escapeAttr(formatDrumPattern(scene.drums[track.key]))}" aria-label="${track.label} text pattern" spellcheck="false" />
+            <label class="track-label drum-volume-label">Vol <input type="range" min="0" max="1" step="0.01" value="${scene.trackVolumes[track.key]}"></label>
+          `;
+          const patternInput = head.querySelector(".drum-pattern-input");
+          patternInput.addEventListener("input", () => {
+            const parsed = parseDrumPattern(patternInput.value);
+            patternInput.classList.toggle("invalid", !parsed);
+            patternInput.toggleAttribute("aria-invalid", !parsed);
+            patternInput.title = parsed ? "" : "Use x, _, and - in a 1, 2, 4, 8, 16, or 32 step pattern.";
+            if (!parsed) return;
+            scene.drums[track.key] = parsed;
+            savePreset();
+            renderDrumGridCells();
+          });
+          patternInput.addEventListener("blur", () => {
+            const parsed = parseDrumPattern(patternInput.value);
+            if (!parsed) {
+              patternInput.value = formatDrumPattern(scene.drums[track.key]);
+              patternInput.classList.remove("invalid");
+              patternInput.removeAttribute("aria-invalid");
+              patternInput.title = "";
+              return;
+            }
+            patternInput.value = formatDrumPattern(parsed);
+          });
+          head.querySelector(".track-label input").addEventListener("input", (event) => {
             scene.trackVolumes[track.key] = Number(event.target.value);
             savePreset();
           });
@@ -1643,20 +2303,17 @@
           const steps = document.createElement("div");
           steps.className = "step-grid";
           for (let step = 0; step < STEPS; step += 1) {
-            const cell = document.createElement("button");
-            cell.type = "button";
+            const cell = document.createElement("div");
             cell.className = "drum-cell";
+            cell.dataset.track = track.key;
+            cell.dataset.step = String(step);
+            cell.setAttribute("role", "img");
+            const drumValue = normalizeDrumValue(scene.drums[track.key][step]);
             cell.classList.toggle("beat", step % 4 === 0);
-            cell.classList.toggle("on", scene.drums[track.key][step]);
+            cell.classList.toggle("on", drumValue === 1);
+            cell.classList.toggle("ghost", drumValue === 0.5);
             cell.classList.toggle("playing", step === state.playhead);
-            cell.ariaLabel = `${track.label} step ${step + 1}`;
-            bindStepDrag(cell, { type: "drums", trackKey: track.key, step }, (fromStep, toStep) => moveDrumStep(track.key, fromStep, toStep));
-            cell.addEventListener("click", () => {
-              if (suppressNextStepClick) return;
-              scene.drums[track.key][step] = !scene.drums[track.key][step];
-              savePreset();
-              renderDrumGrid();
-            });
+            cell.ariaLabel = `${track.label} step ${step + 1} ${drumValue === 1 ? "hit" : (drumValue === 0.5 ? "ghost" : "off")}`;
             steps.append(cell);
           }
 
@@ -1665,10 +2322,165 @@
         });
       }
 
+      function loadDrumPreset(genreKey, presetName) {
+        if (state.activeDrumPreset?.genre === genreKey && state.activeDrumPreset?.preset === presetName) return;
+        const preset = DRUM_PRESETS[genreKey]?.patterns[presetName];
+        if (!preset) return;
+        const scene = currentScene();
+        TRACKS.forEach((track) => {
+          scene.drums[track.key] = fixedLengthArray(preset[track.key], 0).map(normalizeDrumValue);
+        });
+        state.activeDrumPreset = { genre: genreKey, preset: presetName };
+        state.drumPresetGenre = genreKey;
+        setBpm(preset.bpm);
+        savePreset();
+        renderAll();
+      }
+
+      function saveCurrentUserDrumPreset(name) {
+        const normalizedName = name.trim();
+        if (!normalizedName) {
+          el.status.textContent = "Name rhythm before saving";
+          return;
+        }
+        const existingIndex = state.userDrumPresets.findIndex((preset) => preset.name.toLowerCase() === normalizedName.toLowerCase());
+        const existingPreset = existingIndex >= 0 ? state.userDrumPresets[existingIndex] : null;
+        const now = new Date().toISOString();
+        const preset = normalizeUserDrumPreset({
+          id: existingPreset?.id || `${normalizedName}-${Date.now()}`,
+          name: normalizedName,
+          bpm: state.bpm,
+          createdAt: existingPreset?.createdAt || now,
+          updatedAt: now,
+          drums: currentDrumPattern(),
+        });
+        if (!preset) return;
+        if (existingIndex >= 0) {
+          state.userDrumPresets.splice(existingIndex, 1, preset);
+        } else {
+          state.userDrumPresets.push(preset);
+        }
+        state.activeDrumPreset = { genre: "user", preset: preset.id };
+        state.userDrumPresetExport = "";
+        saveUserDrumPresets();
+        savePreset();
+        renderAll();
+      }
+
+      function loadUserDrumPreset(id) {
+        const preset = state.userDrumPresets.find((entry) => entry.id === id);
+        if (!preset) return;
+        const scene = currentScene();
+        TRACKS.forEach((track) => {
+          scene.drums[track.key] = fixedLengthArray(preset.drums[track.key], 0).map(normalizeDrumValue);
+        });
+        state.activeDrumPreset = { genre: "user", preset: preset.id };
+        setBpm(preset.bpm);
+        savePreset();
+        renderAll();
+      }
+
+      function deleteUserDrumPreset(id) {
+        const index = state.userDrumPresets.findIndex((preset) => preset.id === id);
+        if (index < 0) return;
+        state.userDrumPresets.splice(index, 1);
+        if (state.activeDrumPreset?.genre === "user" && state.activeDrumPreset.preset === id) {
+          state.activeDrumPreset = null;
+        }
+        state.userDrumPresetExport = "";
+        saveUserDrumPresets();
+        savePreset();
+        renderAll();
+      }
+
+      function renderUserDrumPresetTools() {
+        const wrapper = document.createElement("div");
+        wrapper.className = "user-preset-tools";
+
+        const title = document.createElement("h3");
+        title.textContent = "My Rhythms";
+
+        const actions = document.createElement("div");
+        actions.className = "user-preset-actions";
+
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.placeholder = "Name this rhythm";
+        nameInput.autocomplete = "off";
+
+        const saveButton = document.createElement("button");
+        saveButton.type = "button";
+        saveButton.textContent = "Save Current";
+        saveButton.addEventListener("click", () => saveCurrentUserDrumPreset(nameInput.value));
+        nameInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") saveCurrentUserDrumPreset(nameInput.value);
+        });
+
+        const exportButton = document.createElement("button");
+        exportButton.type = "button";
+        exportButton.textContent = "Export JSON";
+        exportButton.addEventListener("click", () => {
+          state.userDrumPresetExport = JSON.stringify(userDrumPresetExportPayload(), null, 2);
+          renderDrumPresetPanel();
+        });
+
+        actions.append(nameInput, saveButton, exportButton);
+
+        const list = document.createElement("div");
+        list.className = "user-preset-list";
+        if (!state.userDrumPresets.length) {
+          const emptyState = document.createElement("span");
+          emptyState.className = "hint";
+          emptyState.textContent = "Save hand-built drum grids here before promoting the best ones into built-in presets.";
+          list.append(emptyState);
+        } else {
+          state.userDrumPresets.forEach((preset) => {
+            const loadButton = document.createElement("button");
+            loadButton.type = "button";
+            loadButton.textContent = preset.name;
+            loadButton.classList.toggle("active", state.activeDrumPreset?.genre === "user" && state.activeDrumPreset.preset === preset.id);
+            loadButton.addEventListener("click", () => loadUserDrumPreset(preset.id));
+
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.textContent = "Delete";
+            deleteButton.setAttribute("aria-label", `Delete ${preset.name}`);
+            deleteButton.addEventListener("click", () => deleteUserDrumPreset(preset.id));
+
+            list.append(loadButton, deleteButton);
+          });
+        }
+
+        wrapper.append(title, actions, list);
+
+        if (state.userDrumPresetExport) {
+          const exportText = document.createElement("textarea");
+          exportText.className = "user-preset-export";
+          exportText.readOnly = true;
+          exportText.value = state.userDrumPresetExport;
+          wrapper.append(exportText);
+        }
+
+        return wrapper;
+      }
+
+      function renderDrumPresetPanel() {
+        el.drumPresetPanel.replaceChildren();
+        el.drumPresetPanel.classList.toggle("open", state.drumPresetPanelOpen);
+        el.drumPresetsToggle.classList.toggle("active", state.drumPresetPanelOpen);
+        if (!state.drumPresetPanelOpen) return;
+
+        const description = document.createElement("p");
+        description.className = "preset-description";
+        description.textContent = "Built-in drum presets are disabled for now. Save hand-built rhythms below, then export the best ones when they are ready to become built-in presets.";
+
+        el.drumPresetPanel.append(description, renderUserDrumPresetTools());
+      }
+
       function renderPlayhead() {
         document.querySelectorAll(".playing").forEach((node) => node.classList.remove("playing"));
         document.querySelectorAll(`[data-step="${state.playhead}"]`).forEach((node) => node.classList.add("playing"));
-        renderDrumGrid();
+        renderDrumGridCells();
       }
 
       function renderSoundOptions(select, options, currentValue) {
@@ -1690,6 +2502,8 @@
 
       function renderAll() {
         renderSoundCatalog();
+        renderChordPresetPanel();
+        renderDrumPresetPanel();
         renderScenes();
         renderChordGrid();
         renderDrumGrid();
@@ -1702,8 +2516,38 @@
         el.drumVolume.value = state.volumes.drums;
       }
 
+      function shouldIgnoreTransportShortcut(event) {
+        const target = event.target;
+        if (!(target instanceof Element)) return false;
+        if (target.closest("textarea, select, button, dialog")) return true;
+        return Boolean(target.closest("[contenteditable]"));
+      }
+
+      function handleTransportShortcut(event) {
+        if (event.defaultPrevented || shouldIgnoreTransportShortcut(event)) return;
+        if (event.key === "Enter") {
+          event.preventDefault();
+          if (!state.isPlaying) startPlayback();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          stopPlayback();
+        }
+      }
+
       el.play.addEventListener("click", startPlayback);
       el.stop.addEventListener("click", () => stopPlayback());
+      document.addEventListener("keydown", handleTransportShortcut);
+      el.drumPresetsToggle.addEventListener("click", () => {
+        state.drumPresetPanelOpen = !state.drumPresetPanelOpen;
+        savePreset();
+        renderDrumPresetPanel();
+      });
+      el.chordPresetsToggle.addEventListener("click", () => {
+        state.chordPresetPanelOpen = !state.chordPresetPanelOpen;
+        savePreset();
+        renderChordPresetPanel();
+      });
       el.bpm.addEventListener("change", (event) => setBpm(event.target.value));
       el.bpmDown.addEventListener("click", () => setBpm(state.bpm - 1));
       el.bpmUp.addEventListener("click", () => setBpm(state.bpm + 1));
@@ -1778,7 +2622,10 @@
       el.catalogSave.addEventListener("click", saveCatalog);
       el.catalogDialog.addEventListener("cancel", closeCatalog);
 
+      loadUserDrumPresets();
+      loadUserChordPresets();
       loadPreset();
+      applyUrlPresetIdentity();
       renderAll();
     </script>
   </body>
