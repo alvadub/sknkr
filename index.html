@@ -35,7 +35,8 @@
       }
 
       button,
-      input {
+      input,
+      select {
         font: inherit;
       }
 
@@ -59,7 +60,8 @@
         opacity: 0.5;
       }
 
-      input {
+      input,
+      select {
         border: 1px solid var(--line);
         border-radius: 0.7rem;
         background: #0f1115;
@@ -450,6 +452,11 @@
           <input id="strum" type="range" min="0.05" max="0.25" step="0.01" value="0.12" />
           <label for="pad-attack">Pad Attack</label>
           <input id="pad-attack" type="range" min="0.02" max="0.4" step="0.01" value="0.08" />
+          <label for="rhythm-engine">Rhythm Engine</label>
+          <select id="rhythm-engine">
+            <option value="internal">Internal Synth</option>
+            <option value="webaudiofont-piano">WebAudioFont Piano</option>
+          </select>
         </div>
         <div class="volumes" aria-label="Volumes">
           <label>Master <input id="master-volume" type="range" min="0" max="1" step="0.01" value="0.8" /></label>
@@ -545,6 +552,15 @@
       };
       const PRESET_NAME = "default";
       const STORAGE_KEY = `skanker:preset:${PRESET_NAME}:v1`;
+      const RHYTHM_ENGINES = {
+        internal: { label: "Internal Synth" },
+        "webaudiofont-piano": {
+          label: "WebAudioFont Piano",
+          playerUrl: "https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js",
+          presetUrl: "https://surikov.github.io/webaudiofontdata/sound/0000_Aspirin_sf2_file.js",
+          presetName: "_tone_0000_Aspirin_sf2_file",
+        },
+      };
 
       const state = {
         bpm: 100,
@@ -554,6 +570,7 @@
         isPlaying: false,
         strumLength: 0.12,
         padAttack: 0.08,
+        rhythmEngine: "internal",
         volumes: { master: 0.8, rhythm: 0.55, harmony: 0.35, drums: 0.75 },
         chordCatalog: { ...DEFAULT_CHORD_CATALOG },
         scenes: Array.from({ length: 4 }, (_, index) => createScene(index)),
@@ -570,6 +587,9 @@
       let harmonyVoice = null;
       let draggedStep = null;
       let suppressNextStepClick = false;
+      let webAudioFontPlayer = null;
+      let webAudioFontPreset = null;
+      let webAudioFontLoading = null;
 
       const el = {
         status: document.getElementById("status"),
@@ -580,6 +600,7 @@
         bpmUp: document.getElementById("bpm-up"),
         strum: document.getElementById("strum"),
         padAttack: document.getElementById("pad-attack"),
+        rhythmEngine: document.getElementById("rhythm-engine"),
         sceneTabs: document.getElementById("scene-tabs"),
         chordGrid: document.getElementById("chord-grid"),
         drumGrid: document.getElementById("drum-grid"),
@@ -775,9 +796,72 @@
         drumGain.gain.setTargetAtTime(state.volumes.drums, time, 0.01);
       }
 
+      function loadScriptOnce(src) {
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+          return existing.dataset.loaded === "true"
+            ? Promise.resolve()
+            : new Promise((resolve, reject) => {
+              existing.addEventListener("load", resolve, { once: true });
+              existing.addEventListener("error", reject, { once: true });
+            });
+        }
+
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = src;
+          script.async = true;
+          script.addEventListener("load", () => {
+            script.dataset.loaded = "true";
+            resolve();
+          }, { once: true });
+          script.addEventListener("error", reject, { once: true });
+          document.head.append(script);
+        });
+      }
+
+      function ensureWebAudioFont() {
+        if (webAudioFontPreset) return Promise.resolve(webAudioFontPreset);
+        if (webAudioFontLoading) return webAudioFontLoading;
+
+        const engine = RHYTHM_ENGINES[state.rhythmEngine];
+        if (!engine?.playerUrl) return Promise.resolve(null);
+
+        webAudioFontLoading = loadScriptOnce(engine.playerUrl)
+          .then(() => {
+            if (typeof window.WebAudioFontPlayer !== "function") throw new Error("WebAudioFontPlayer was not loaded");
+            webAudioFontPlayer = webAudioFontPlayer || new window.WebAudioFontPlayer();
+            webAudioFontPlayer.loader.startLoad(audioContext, engine.presetUrl, engine.presetName);
+            return new Promise((resolve) => {
+              webAudioFontPlayer.loader.waitLoad(() => {
+                webAudioFontPreset = window[engine.presetName];
+                resolve(webAudioFontPreset);
+              });
+            });
+          })
+          .catch((error) => {
+            console.warn("Could not load WebAudioFont rhythm engine", error);
+            state.rhythmEngine = "internal";
+            el.rhythmEngine.value = state.rhythmEngine;
+            savePreset();
+            return null;
+          })
+          .finally(() => {
+            webAudioFontLoading = null;
+          });
+
+        return webAudioFontLoading;
+      }
+
       function playRhythm(chord, time) {
         const parsed = parseChord(chord, 55);
         if (!parsed || !audioContext) return;
+
+        if (state.rhythmEngine === "webaudiofont-piano" && webAudioFontPlayer && webAudioFontPreset) {
+          webAudioFontPlayer.queueChord(audioContext, rhythmGain, webAudioFontPreset, time, parsed.midi, state.strumLength, 0.8);
+          return;
+        }
+
         const output = audioContext.createGain();
         const filter = audioContext.createBiquadFilter();
         filter.type = "lowpass";
@@ -936,6 +1020,10 @@
       async function startPlayback() {
         ensureAudio();
         await audioContext.resume();
+        if (state.rhythmEngine === "webaudiofont-piano") {
+          el.status.textContent = "Loading WebAudioFont Piano...";
+          await ensureWebAudioFont();
+        }
         stopPlayback(false);
         state.isPlaying = true;
         state.playhead = -1;
@@ -1001,6 +1089,7 @@
           currentScene: state.currentScene,
           strumLength: state.strumLength,
           padAttack: state.padAttack,
+          rhythmEngine: state.rhythmEngine,
           volumes: { ...state.volumes },
           chordCatalog: { ...state.chordCatalog },
           scenes: state.scenes.map((scene, index) => normalizeScene(scene, index)),
@@ -1026,6 +1115,9 @@
           state.currentScene = Math.trunc(clampNumber(preset.currentScene, 0, state.scenes.length - 1, 0));
           state.strumLength = clampNumber(preset.strumLength, 0.05, 0.25, state.strumLength);
           state.padAttack = clampNumber(preset.padAttack, 0.02, 0.4, state.padAttack);
+          state.rhythmEngine = Object.prototype.hasOwnProperty.call(RHYTHM_ENGINES, preset.rhythmEngine)
+            ? preset.rhythmEngine
+            : state.rhythmEngine;
           state.volumes = {
             master: clampNumber(preset.volumes?.master, 0, 1, state.volumes.master),
             rhythm: clampNumber(preset.volumes?.rhythm, 0, 1, state.volumes.rhythm),
@@ -1399,6 +1491,7 @@
         el.bpm.value = state.bpm;
         el.strum.value = state.strumLength;
         el.padAttack.value = state.padAttack;
+        el.rhythmEngine.value = state.rhythmEngine;
         el.masterVolume.value = state.volumes.master;
         el.rhythmVolume.value = state.volumes.rhythm;
         el.harmonyVolume.value = state.volumes.harmony;
@@ -1417,6 +1510,20 @@
       el.padAttack.addEventListener("input", (event) => {
         state.padAttack = Number(event.target.value);
         savePreset();
+      });
+      el.rhythmEngine.addEventListener("change", async (event) => {
+        state.rhythmEngine = Object.prototype.hasOwnProperty.call(RHYTHM_ENGINES, event.target.value)
+          ? event.target.value
+          : "internal";
+        if (state.rhythmEngine !== "webaudiofont-piano") {
+          webAudioFontPreset = null;
+        } else if (audioContext) {
+          el.status.textContent = "Loading WebAudioFont Piano...";
+          await ensureWebAudioFont();
+          if (!state.isPlaying) el.status.textContent = "Stopped";
+        }
+        savePreset();
+        renderAll();
       });
       el.masterVolume.addEventListener("input", (event) => {
         state.volumes.master = Number(event.target.value);
