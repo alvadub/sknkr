@@ -56,6 +56,8 @@
       const STORAGE_KEY = `skanker:preset:${PRESET_NAME}:v1`;
       const USER_DRUM_PRESETS_KEY = "skanker:drum-presets:v1";
       const USER_CHORD_PRESETS_KEY = "skanker:chord-progressions:v1";
+      const SHARE_HASH_KEY = "s";
+      const SHARE_STATE_VERSION = 1;
       const WEBAUDIOFONT_PLAYER_URL = "https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js";
       const SOUND_CATALOG = {
         internal: { label: "Internal Synth" },
@@ -2210,6 +2212,94 @@
         };
       }
 
+      function utf8ToBase64Url(text) {
+        const bytes = new TextEncoder().encode(text);
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let index = 0; index < bytes.length; index += chunkSize) {
+          const chunk = bytes.subarray(index, index + chunkSize);
+          binary += String.fromCharCode(...chunk);
+        }
+        return window.btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      }
+
+      function base64UrlToUtf8(value) {
+        const base64 = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64 + "===".slice((base64.length + 3) % 4);
+        const binary = window.atob(padded);
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+      }
+
+      function encodeShareState(snapshot) {
+        return utf8ToBase64Url(JSON.stringify({
+          v: SHARE_STATE_VERSION,
+          p: snapshot,
+        }));
+      }
+
+      function decodeShareState(encoded) {
+        const parsed = JSON.parse(base64UrlToUtf8(encoded));
+        if (!parsed || typeof parsed !== "object") return null;
+        if (parsed.v !== SHARE_STATE_VERSION) return null;
+        if (!parsed.p || typeof parsed.p !== "object") return null;
+        return parsed.p;
+      }
+
+      function applyPresetData(preset) {
+        if (!preset || typeof preset !== "object") return;
+        state.uiMode = normalizeUiMode(preset.uiMode);
+        state.songTitle = typeof preset.songTitle === "string" && preset.songTitle.trim()
+          ? preset.songTitle.trim()
+          : state.songTitle;
+        state.songNote = typeof preset.songNote === "string"
+          ? preset.songNote.trim()
+          : state.songNote;
+        state.bpm = clampNumber(preset.bpm, 60, 200, state.bpm);
+        state.loopActiveScene = Boolean(preset.loopActiveScene);
+        state.strumLength = clampNumber(preset.strumLength, 0.05, 0.25, state.strumLength);
+        state.padAttack = clampNumber(preset.padAttack, 0.02, 0.4, state.padAttack);
+        state.drumPresetPanelOpen = Boolean(preset.drumPresetPanelOpen);
+        state.drumPresetGenre = Object.prototype.hasOwnProperty.call(DRUM_PRESETS, preset.drumPresetGenre)
+          ? preset.drumPresetGenre
+          : state.drumPresetGenre;
+        state.chordPresetPanelOpen = Boolean(preset.chordPresetPanelOpen);
+        const savedActivePreset = preset.activeDrumPreset;
+        const hasBuiltInPreset = savedActivePreset && DRUM_PRESETS[savedActivePreset.genre]?.patterns[savedActivePreset.preset];
+        const hasUserPreset = savedActivePreset?.genre === "user" && state.userDrumPresets.some((entry) => entry.id === savedActivePreset.preset);
+        state.activeDrumPreset = hasBuiltInPreset || hasUserPreset
+          ? { genre: savedActivePreset.genre, preset: savedActivePreset.preset }
+          : null;
+        const savedActiveChordPreset = preset.activeChordPreset;
+        state.activeChordPreset = savedActiveChordPreset?.type === "user" && state.userChordPresets.some((entry) => entry.id === savedActiveChordPreset.preset)
+          ? { type: "user", preset: savedActiveChordPreset.preset }
+          : null;
+        state.sounds = {
+          rhythm: Object.prototype.hasOwnProperty.call(SOUND_CATALOG, preset.sounds?.rhythm)
+            ? preset.sounds.rhythm
+            : (preset.rhythmEngine === "webaudiofont-piano" ? "piano" : state.sounds.rhythm),
+          harmony: Object.prototype.hasOwnProperty.call(SOUND_CATALOG, preset.sounds?.harmony)
+            ? preset.sounds.harmony
+            : state.sounds.harmony,
+          drums: normalizeDrumSounds(preset.sounds?.drums),
+        };
+        state.bass = normalizeBassSettings(preset.bass);
+        state.volumes = {
+          master: clampNumber(preset.volumes?.master, 0, 1, state.volumes.master),
+          rhythm: clampNumber(preset.volumes?.rhythm, 0, 1, state.volumes.rhythm),
+          harmony: clampNumber(preset.volumes?.harmony, 0, 1, state.volumes.harmony),
+          drums: clampNumber(preset.volumes?.drums, 0, 1, state.volumes.drums),
+        };
+        state.chordCatalog = preset.chordCatalog && typeof preset.chordCatalog === "object"
+          ? Object.fromEntries(Object.entries(preset.chordCatalog).map(([name, notes]) => [chordName(name), String(notes || "")]).filter(([name]) => name))
+          : state.chordCatalog;
+        const savedScenes = Array.isArray(preset.scenes) && preset.scenes.length
+          ? preset.scenes.map((scene, index) => normalizeScene(scene, index))
+          : Array.from({ length: INITIAL_SCENE_COUNT }, (_, index) => createScene(index));
+        state.scenes = savedScenes;
+        state.currentScene = Math.trunc(clampNumber(preset.currentScene, 0, state.scenes.length - 1, 0));
+      }
+
       function savePreset() {
         try {
           window.localStorage.setItem(STORAGE_KEY, JSON.stringify(presetSnapshot()));
@@ -2223,60 +2313,35 @@
           const rawPreset = window.localStorage.getItem(STORAGE_KEY);
           if (!rawPreset) return;
           const preset = JSON.parse(rawPreset);
-          if (!preset || typeof preset !== "object") return;
-
-          state.uiMode = normalizeUiMode(preset.uiMode);
-          state.songTitle = typeof preset.songTitle === "string" && preset.songTitle.trim()
-            ? preset.songTitle.trim()
-            : state.songTitle;
-          state.songNote = typeof preset.songNote === "string"
-            ? preset.songNote.trim()
-            : state.songNote;
-          state.bpm = clampNumber(preset.bpm, 60, 200, state.bpm);
-          state.loopActiveScene = Boolean(preset.loopActiveScene);
-          state.strumLength = clampNumber(preset.strumLength, 0.05, 0.25, state.strumLength);
-          state.padAttack = clampNumber(preset.padAttack, 0.02, 0.4, state.padAttack);
-          state.drumPresetPanelOpen = Boolean(preset.drumPresetPanelOpen);
-          state.drumPresetGenre = Object.prototype.hasOwnProperty.call(DRUM_PRESETS, preset.drumPresetGenre)
-            ? preset.drumPresetGenre
-            : state.drumPresetGenre;
-          state.chordPresetPanelOpen = Boolean(preset.chordPresetPanelOpen);
-          const savedActivePreset = preset.activeDrumPreset;
-          const hasBuiltInPreset = savedActivePreset && DRUM_PRESETS[savedActivePreset.genre]?.patterns[savedActivePreset.preset];
-          const hasUserPreset = savedActivePreset?.genre === "user" && state.userDrumPresets.some((entry) => entry.id === savedActivePreset.preset);
-          state.activeDrumPreset = hasBuiltInPreset || hasUserPreset
-            ? { genre: savedActivePreset.genre, preset: savedActivePreset.preset }
-            : null;
-          const savedActiveChordPreset = preset.activeChordPreset;
-          state.activeChordPreset = savedActiveChordPreset?.type === "user" && state.userChordPresets.some((entry) => entry.id === savedActiveChordPreset.preset)
-            ? { type: "user", preset: savedActiveChordPreset.preset }
-            : null;
-          state.sounds = {
-            rhythm: Object.prototype.hasOwnProperty.call(SOUND_CATALOG, preset.sounds?.rhythm)
-              ? preset.sounds.rhythm
-              : (preset.rhythmEngine === "webaudiofont-piano" ? "piano" : state.sounds.rhythm),
-            harmony: Object.prototype.hasOwnProperty.call(SOUND_CATALOG, preset.sounds?.harmony)
-              ? preset.sounds.harmony
-              : state.sounds.harmony,
-            drums: normalizeDrumSounds(preset.sounds?.drums),
-          };
-          state.bass = normalizeBassSettings(preset.bass);
-          state.volumes = {
-            master: clampNumber(preset.volumes?.master, 0, 1, state.volumes.master),
-            rhythm: clampNumber(preset.volumes?.rhythm, 0, 1, state.volumes.rhythm),
-            harmony: clampNumber(preset.volumes?.harmony, 0, 1, state.volumes.harmony),
-            drums: clampNumber(preset.volumes?.drums, 0, 1, state.volumes.drums),
-          };
-          state.chordCatalog = preset.chordCatalog && typeof preset.chordCatalog === "object"
-            ? Object.fromEntries(Object.entries(preset.chordCatalog).map(([name, notes]) => [chordName(name), String(notes || "")]).filter(([name]) => name))
-            : state.chordCatalog;
-          const savedScenes = Array.isArray(preset.scenes) && preset.scenes.length
-            ? preset.scenes.map((scene, index) => normalizeScene(scene, index))
-            : Array.from({ length: INITIAL_SCENE_COUNT }, (_, index) => createScene(index));
-          state.scenes = savedScenes;
-          state.currentScene = Math.trunc(clampNumber(preset.currentScene, 0, state.scenes.length - 1, 0));
+          applyPresetData(preset);
         } catch (error) {
           console.warn("Could not load Skanker preset", error);
+        }
+      }
+
+      function currentShareUrl() {
+        const snapshot = presetSnapshot();
+        const payload = encodeShareState(snapshot);
+        const params = new URLSearchParams(window.location.search);
+        const base = `${window.location.origin}${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+        return `${base}#${SHARE_HASH_KEY}=${payload}`;
+      }
+
+      function applySharedStateFromUrl() {
+        const rawHash = String(window.location.hash || "").replace(/^#/, "");
+        if (!rawHash) return false;
+        const hashParams = new URLSearchParams(rawHash);
+        const encoded = hashParams.get(SHARE_HASH_KEY);
+        if (!encoded) return false;
+        try {
+          const snapshot = decodeShareState(encoded);
+          if (!snapshot) throw new Error("Invalid shared state payload");
+          applyPresetData(snapshot);
+          return true;
+        } catch (error) {
+          console.warn("Could not load shared URL state", error);
+          el.status.textContent = "Invalid shared URL payload";
+          return false;
         }
       }
 
@@ -2458,7 +2523,15 @@
           name,
           rhythm: [...source.rhythm],
           harmony: [...source.harmony],
+          chordPoolText: {
+            rhythm: [...(source.chordPoolText?.rhythm || chordPoolTextState(source.rhythm))],
+            harmony: [...(source.chordPoolText?.harmony || chordPoolTextState(source.harmony))],
+          },
           bass: source.bass.map((note) => note ? { ...note } : null),
+          bassText: {
+            notes: typeof source.bassText?.notes === "string" ? source.bassText.notes : formatBassNotes(source.bass),
+            pattern: typeof source.bassText?.pattern === "string" ? source.bassText.pattern : formatBassPattern(source.bass),
+          },
           drums: Object.fromEntries(TRACKS.map((track) => [track.key, [...source.drums[track.key]]])),
           mutes: {
             rhythm: Boolean(source.mutes?.rhythm),
@@ -4002,7 +4075,13 @@
         el.songNoteDisplay.textContent = state.songNote || "Add a composer note for collaborators.";
         savePreset();
       });
-      el.shareLink.addEventListener("click", () => copyText(window.location.href, "Link copied"));
+      el.shareLink.addEventListener("click", () => {
+        const url = currentShareUrl();
+        if (url.length > 7800) {
+          el.status.textContent = "Shared URL is large";
+        }
+        copyText(url, "Link copied");
+      });
       document.addEventListener("keydown", handleTransportShortcut, { capture: true });
       document.addEventListener("keydown", handleBassKeyDown);
       document.addEventListener("keyup", handleBassKeyUp);
@@ -4193,5 +4272,6 @@
       loadUserDrumPresets();
       loadUserChordPresets();
       loadPreset();
+      applySharedStateFromUrl();
       applyUrlPresetIdentity();
       renderAll();
