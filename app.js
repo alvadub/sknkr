@@ -2487,7 +2487,13 @@
 
       function saveCurrentProject() {
         const existing = currentProject();
-        const nextName = state.songTitle || "Untitled Project";
+        let baseName = state.songTitle || "Untitled Project";
+        let nextName = baseName;
+        let counter = 1;
+        while (state.projects.some((p) => p.name === nextName && p.id !== existing?.id)) {
+          counter += 1;
+          nextName = `${baseName} v${counter}`;
+        }
         const project = normalizeProjectEntry({
           id: existing?.id || `project-${Date.now()}`,
           name: nextName,
