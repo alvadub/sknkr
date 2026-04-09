@@ -53,10 +53,10 @@
         Cm: "c4,eb4,g4",
       };
       const PRESET_NAME = "default";
-      const STORAGE_KEY = `skanker:preset:${PRESET_NAME}:v1`;
-      const PROJECTS_STORAGE_KEY = "skanker:projects:v1";
-      const USER_DRUM_PRESETS_KEY = "skanker:drum-presets:v1";
-      const USER_CHORD_PRESETS_KEY = "skanker:chord-progressions:v1";
+      const STORAGE_KEY = `SKNKR:preset:${PRESET_NAME}:v1`;
+      const PROJECTS_STORAGE_KEY = "SKNKR:projects:v1";
+      const USER_DRUM_PRESETS_KEY = "SKNKR:drum-presets:v1";
+      const USER_CHORD_PRESETS_KEY = "SKNKR:chord-progressions:v1";
       const SHARE_HASH_KEY = "s";
       const SHARE_STATE_VERSION = 1;
       const WEBAUDIOFONT_PLAYER_URL = "https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js";
@@ -149,7 +149,7 @@
       const state = {
         bpm: 100,
         uiMode: "edit",
-        songTitle: "Skanking Sequencer",
+        songTitle: "SKNKR",
         songNote: "Live dub sketch for groove, chords, and arrangement review.",
         currentScene: 0,
         pendingScene: null,
@@ -1647,31 +1647,31 @@
         const bassLayer = state.bass.layers[0] || { shape: "sine", detune: 0, gain: 1 };
         const sceneSummaries = state.scenes.map((scene, index) => summarizeScene(scene, index, state.scenes.length));
         const lines = [
-          "; skanker dub export",
+          "; SKNKR dub export",
           `; tempo: ${state.bpm}`,
           "; bars: 2",
-          `; skanker.loop_steps: ${LOOP_STEPS}`,
-          `; skanker.current_scene: ${dubSceneLabel(state.currentScene)}`,
-          `; skanker.pending_scene: ${state.pendingScene === null ? "none" : dubSceneLabel(state.pendingScene)}`,
-          `; skanker.loop_active_scene: ${dubMetaValue(state.loopActiveScene)}`,
-          `; skanker.transport: ${dubMetaMap([
+          `; SKNKR.loop_steps: ${LOOP_STEPS}`,
+          `; SKNKR.current_scene: ${dubSceneLabel(state.currentScene)}`,
+          `; SKNKR.pending_scene: ${state.pendingScene === null ? "none" : dubSceneLabel(state.pendingScene)}`,
+          `; SKNKR.loop_active_scene: ${dubMetaValue(state.loopActiveScene)}`,
+          `; SKNKR.transport: ${dubMetaMap([
             ["strum", state.strumLength],
             ["pad_attack", state.padAttack],
           ])}`,
-          `; skanker.main_mix: ${dubMetaMap([
+          `; SKNKR.main_mix: ${dubMetaMap([
             ["master", state.volumes.master],
             ["rhythm", state.volumes.rhythm],
             ["harmony", state.volumes.harmony],
             ["drums", state.volumes.drums],
             ["bass", state.bass.volume],
           ])}`,
-          `; skanker.volumes: ${dubMetaMap([
+          `; SKNKR.volumes: ${dubMetaMap([
             ["master", state.volumes.master],
             ["rhythm", state.volumes.rhythm],
             ["harmony", state.volumes.harmony],
             ["drums", state.volumes.drums],
           ])}`,
-          `; skanker.sounds: ${dubMetaMap([
+          `; SKNKR.sounds: ${dubMetaMap([
             ["rhythm", state.sounds.rhythm],
             ["harmony", state.sounds.harmony],
             ["kick", state.sounds.drums.kick],
@@ -1679,7 +1679,7 @@
             ["hihat", state.sounds.drums.hihat],
             ["openhat", state.sounds.drums.openhat],
           ])}`,
-          `; skanker.sound_labels: ${dubMetaMap([
+          `; SKNKR.sound_labels: ${dubMetaMap([
             ["rhythm", soundLabel(state.sounds.rhythm)],
             ["harmony", soundLabel(state.sounds.harmony)],
             ["kick", drumSoundLabel(state.sounds.drums.kick)],
@@ -1687,7 +1687,7 @@
             ["hihat", drumSoundLabel(state.sounds.drums.hihat)],
             ["openhat", drumSoundLabel(state.sounds.drums.openhat)],
           ])}`,
-          `; skanker.bass: ${dubMetaMap([
+          `; SKNKR.bass: ${dubMetaMap([
             ["enabled", state.bass.enabled],
             ["preset", state.bass.preset],
             ["preset_label", bassPresetLabel(state.bass.preset)],
@@ -1701,7 +1701,7 @@
             ["detune", bassLayer.detune],
             ["layer_gain", bassLayer.gain],
           ])}`,
-          `; skanker.arrangement: ${state.scenes.map((scene, index) => `${dubSceneLabel(index)}:${sceneSummaries[index].role}`).join("|")}`,
+          `; SKNKR.arrangement: ${state.scenes.map((scene, index) => `${dubSceneLabel(index)}:${sceneSummaries[index].role}`).join("|")}`,
           "",
         ];
         state.scenes.forEach((scene, index) => {
@@ -4298,12 +4298,12 @@
       el.mixerClose.addEventListener("click", closeMixer);
       el.mixerDialog.addEventListener("close", renderShell);
       el.songTitleInput.addEventListener("input", () => {
-        state.songTitle = el.songTitleInput.textContent.trim() || "Untitled Skank";
+        state.songTitle = el.songTitleInput.textContent.trim() || "Untitled SKNKR";
         el.songTitleDisplay.textContent = state.songTitle;
         savePreset();
       });
       el.songTitleInput.addEventListener("blur", () => {
-        state.songTitle = el.songTitleInput.textContent.trim() || "Untitled Skank";
+        state.songTitle = el.songTitleInput.textContent.trim() || "Untitled SKNKR";
         el.songTitleInput.textContent = state.songTitle;
         el.songTitleDisplay.textContent = state.songTitle;
         savePreset();
@@ -4365,7 +4365,7 @@
       });
       el.writeCopy.addEventListener("click", () => copyText(exportDubText(), "DUB copied"));
       el.writeDownload.addEventListener("click", () => {
-        downloadTextFile("skanker.dub", exportDubText(), "text/plain");
+        downloadTextFile("SKNKR.dub", exportDubText(), "text/plain");
       });
       el.writeImport.addEventListener("click", () => {
         runBlockingAction(() => el.dubImportFile.click());

@@ -1,6 +1,6 @@
-# Skanker
+# SKNKR
 
-Skanker is a portable browser prototype for writing skanking, harmony, and drum loops without a DAW.
+SKNKR is a portable browser prototype for writing skanking, harmony, and drum loops without a DAW.
 
 Open `index.html` directly in a desktop browser, press `Play`, and edit the two-bar grid.
 
