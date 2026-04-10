@@ -217,7 +217,6 @@
         status: document.getElementById("status"),
         modeListen: document.getElementById("mode-listen"),
         modeEdit: document.getElementById("mode-edit"),
-        modeWrite: document.getElementById("mode-write"),
         shareLink: document.getElementById("share-link"),
         mixerOpen: document.getElementById("mixer-open"),
         mixerDialog: document.getElementById("mixer-dialog"),
@@ -364,7 +363,7 @@
       }
 
       function normalizeUiMode(rawMode) {
-        return ["listen", "edit", "write"].includes(rawMode) ? rawMode : "edit";
+        return ["listen", "edit"].includes(rawMode) ? rawMode : "edit";
       }
 
       function escapeAttr(value) {
@@ -4516,7 +4515,6 @@
         const modes = [
           [el.modeListen, "listen"],
           [el.modeEdit, "edit"],
-          [el.modeWrite, "write"],
         ];
         modes.forEach(([button, mode]) => {
           button.classList.toggle("active", state.uiMode === mode);
@@ -4668,7 +4666,6 @@
       el.stop.addEventListener("click", () => stopPlayback());
       el.modeListen.addEventListener("click", () => setUiMode("listen"));
       el.modeEdit.addEventListener("click", () => setUiMode("edit"));
-      el.modeWrite.addEventListener("click", () => setUiMode("write"));
       el.mixerOpen.addEventListener("click", openMixer);
       el.mixerClose.addEventListener("click", closeMixer);
       el.mixerDialog.addEventListener("close", renderShell);
