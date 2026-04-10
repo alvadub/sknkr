@@ -1,0 +1,7 @@
+{
+  "name": "sknkr",
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  }
+}

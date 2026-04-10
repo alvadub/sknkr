@@ -42,6 +42,7 @@
           <div id="status" class="status-pill">Stopped</div>
           <button id="project-save" class="save-button" type="button">SAVE</button>
           <button id="mixer-open" type="button">Mixer</button>
+          <button id="paste-open" type="button">Paste</button>
           <button id="share-link" type="button">Share</button>
         </div>
       </header>
@@ -270,6 +271,19 @@
       </div>
       <div id="chord-editor" class="bass-editor" data-chord-editor></div>
       <p class="hint">This editor compiles back into the existing 32-step Rhythm and Harmony grid.</p>
+    </dialog>
+
+    <dialog id="paste-dialog" class="paste-dialog">
+      <header class="paste-dialog-header">
+        <h2>Paste &amp; Play</h2>
+        <button id="paste-close" class="paste-close-btn" aria-label="Close">✕</button>
+      </header>
+      <textarea id="paste-input" class="paste-input" spellcheck="false" placeholder="Paste a DUB snippet or bare block…&#10;&#10;kick:  x---x---x---x---&#10;snare: ----x-------x---&#10;hihat: x-x-x-x-x-x-x-x-"></textarea>
+      <footer class="paste-dialog-footer">
+        <span id="paste-error" class="paste-error"></span>
+        <button id="paste-play-btn" type="button">Play</button>
+        <button id="paste-import-btn" type="button" disabled>Import</button>
+      </footer>
     </dialog>
 
     <script src="app.js"></script>

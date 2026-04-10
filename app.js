@@ -217,6 +217,13 @@
         status: document.getElementById("status"),
         modeListen: document.getElementById("mode-listen"),
         modeEdit: document.getElementById("mode-edit"),
+        pasteOpen: document.getElementById("paste-open"),
+        pasteDialog: document.getElementById("paste-dialog"),
+        pasteClose: document.getElementById("paste-close"),
+        pasteInput: document.getElementById("paste-input"),
+        pastePlayBtn: document.getElementById("paste-play-btn"),
+        pasteImportBtn: document.getElementById("paste-import-btn"),
+        pasteError: document.getElementById("paste-error"),
         shareLink: document.getElementById("share-link"),
         mixerOpen: document.getElementById("mixer-open"),
         mixerDialog: document.getElementById("mixer-dialog"),
@@ -1848,7 +1855,7 @@
       }
 
       function parseDubPatternCells(rawPattern, stepCount, ticksPerStep = 1) {
-        const raw = String(rawPattern || "").replace(/[\s|]/g, "");
+        const raw = String(rawPattern || "").replace(/[\s|]/g, "").replace(/([xX_\-])!(\d+)/g, (_, ch, n) => ch.repeat(1 + Number(n)));
         if (!raw) return Array.from({ length: stepCount }, () => Array(ticksPerStep).fill("-"));
         const cells = [];
         for (let index = 0; index < raw.length; index += 1) {
@@ -1922,7 +1929,8 @@
       }
 
       function chordDubLineToSlots(pattern, chordsText) {
-        const chords = String(chordsText || "").trim().split(/\s+/).filter(Boolean);
+        const chords = String(chordsText || "").trim().split(/\s+/).filter(Boolean)
+          .flatMap((token) => { const m = token.match(/^(.+?)!(\d+)$/); return m ? Array(Math.max(1, Number(m[2]))).fill(m[1]) : [token]; });
         if (chords.some((chord) => !parseChord(chord))) return null;
         const cells = parseDubPatternCells(pattern, CHORD_STEPS, 1);
         if (!cells) return null;
@@ -2036,10 +2044,10 @@
         }
       }
 
-      function importDubText(text) {
+      function importDubTextIntoState(text, targetState) {
         const scenesByName = new Map();
         const order = [];
-        let nextBpm = state.bpm;
+        let nextBpm = targetState.bpm;
         let nextChordCatalog = null;
         let currentSection = null;
         String(text || "").split(/\r?\n/).forEach((rawLine) => {
@@ -2058,7 +2066,7 @@
             return;
           }
           const tempo = rawLine.match(/^\s*;\s*tempo:\s*(\d+(?:\.\d+)?)/i);
-          if (tempo) nextBpm = clampNumber(tempo[1], 60, 200, state.bpm);
+          if (tempo) nextBpm = clampNumber(tempo[1], 60, 200, targetState.bpm);
           const line = stripDubComment(rawLine).trim();
           if (!line) return;
           if (line.startsWith("$:")) {
@@ -2084,13 +2092,123 @@
         });
         const orderedNames = order.filter((name) => scenesByName.has(name));
         if (!orderedNames.length) throw new Error("No DUB sections found to import.");
-        state.bpm = nextBpm;
-        if (nextChordCatalog) state.chordCatalog = nextChordCatalog;
-        state.scenes = orderedNames.map((name, index) => normalizeScene(scenesByName.get(name), index));
-        state.currentScene = 0;
-        state.pendingScene = null;
+        targetState.bpm = nextBpm;
+        if (nextChordCatalog) targetState.chordCatalog = nextChordCatalog;
+        targetState.scenes = orderedNames.map((name, index) => normalizeScene(scenesByName.get(name), index));
+        targetState.currentScene = 0;
+        targetState.pendingScene = null;
         releaseHarmony(audioContext?.currentTime || 0);
+      }
+
+      function importDubText(text) {
+        importDubTextIntoState(text, state);
         savePreset();
+        renderAll();
+      }
+
+      function detectPasteFormat(text) {
+        const lines = String(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        const hasDub = lines.some((l) => l.startsWith("#") || l.startsWith("@") || l.startsWith(";") || l.startsWith("$:"));
+        if (hasDub) return "dub";
+        const hasBare = lines.some((l) => /^[a-z][a-z0-9_]*\s*:/i.test(l));
+        if (hasBare) return "bare";
+        return "dub";
+      }
+
+      function reconcilePastePattern(raw, steps) {
+        if (!raw || !raw.length) return "-".repeat(steps);
+        if (raw.length === steps) return raw;
+        if (raw.length < steps) return raw.repeat(Math.ceil(steps / raw.length)).slice(0, steps);
+        return raw.slice(0, steps);
+      }
+
+      function parseBassInlinePattern(content) {
+        const raw = content.replace(/\s/g, "");
+        const noteRe = /([A-Ga-g][#b]?\d)/g;
+        const notes = [];
+        const pat = raw.replace(noteRe, (note) => { notes.push(note); return "x"; })
+          .replace(/_/g, "_").replace(/-/g, "-");
+        return { pat: reconcilePastePattern(pat, STEPS * BASS_TICKS_PER_STEP), notes };
+      }
+
+      function parseChordInlinePattern(content) {
+        const raw = content.replace(/\s/g, "");
+        const chordRe = /([A-G][#b]?(?:maj|min|m|aug|dim|sus|add)?[0-9]*(?:b[0-9]+|#[0-9]+)?)/g;
+        const chords = [];
+        const pat = raw.replace(chordRe, (chord) => { chords.push(chord); return "x"; })
+          .replace(/_/g, "_").replace(/-/g, "-");
+        return { pat: reconcilePastePattern(pat, CHORD_STEPS), chords };
+      }
+
+      function parseBareBlocksToDub(text) {
+        const drumLabels = { kick: "kick", bd: "kick", k: "kick", snare: "snare", sn: "snare", hihat: "hats", hh: "hats", hat: "hats", openhat: "oh", oh: "oh", rim: "oh" };
+        const bassLabels = new Set(["bass", "b", "bassline"]);
+        const chordLabels = new Set(["skank", "chord", "chords", "rhythm"]);
+        const harmonyLabels = new Set(["pad", "texture", "harmony"]);
+
+        const blocks = [];
+        let current = null;
+        String(text).split(/\r?\n/).forEach((rawLine) => {
+          const line = rawLine.trim();
+          const single = line.match(/^([a-z][a-z0-9_]*)\s*:\s*(.+)$/i);
+          if (single) { blocks.push({ label: single[1].toLowerCase(), content: single[2].trim() }); current = null; return; }
+          const header = line.match(/^([a-z][a-z0-9_]*)\s*:\s*$/i);
+          if (header) { current = { label: header[1].toLowerCase(), content: "" }; blocks.push(current); return; }
+          if (current && line) { current.content += line; return; }
+          if (!line) current = null;
+        });
+
+        const dubLines = ["@A"];
+        blocks.forEach(({ label, content }) => {
+          if (!content) return;
+          const drumKey = drumLabels[label];
+          if (drumKey) {
+            const pat = reconcilePastePattern(content.replace(/\s/g, ""), DRUM_STEPS);
+            dubLines.push(`#${drumKey} 1.0 ${pat} c3`);
+            return;
+          }
+          if (bassLabels.has(label)) {
+            const { pat, notes } = parseBassInlinePattern(content);
+            if (notes.length) dubLines.push(`#bass 0.8 ${pat} ${notes.join(" ")}`);
+            return;
+          }
+          if (chordLabels.has(label)) {
+            const { pat, chords } = parseChordInlinePattern(content);
+            if (chords.length) dubLines.push(`#chord 0.7 ${pat} ${chords.join(" ")}`);
+            return;
+          }
+          if (harmonyLabels.has(label)) {
+            const { pat, chords } = parseChordInlinePattern(content);
+            if (chords.length) dubLines.push(`#harmony 0.6 ${pat} ${chords.join(" ")}`);
+            return;
+          }
+          console.warn(`Paste: unknown bare block label "${label}" — skipping`);
+        });
+
+        if (dubLines.length === 1) throw new Error("No recognisable channels found in bare block snippet.");
+        return dubLines.join("\n");
+      }
+
+      function previewDubText(text) {
+        const snapshot = structuredClone(state);
+        try {
+          const format = detectPasteFormat(text);
+          const dub = format === "bare" ? parseBareBlocksToDub(text) : text;
+          importDubTextIntoState(dub, state);
+          renderAll();
+          if (!state.isPlaying) startPlayback();
+          return { ok: true, snapshot };
+        } catch (err) {
+          Object.assign(state, snapshot);
+          renderAll();
+          return { ok: false, error: err.message, snapshot };
+        }
+      }
+
+      function discardPreview(snapshot) {
+        const wasPlaying = state.isPlaying;
+        Object.assign(state, snapshot);
+        if (wasPlaying) stopPlayback(false);
         renderAll();
       }
 
@@ -2435,9 +2553,8 @@
         }
         while (groups.length && !groups[groups.length - 1].value) groups.pop();
         return groups.map(({ value, count }) => {
-          if (!value) return count === 1 ? "_" : `_${count}`;
-          if (count === 1) return value;
-          return /[0-9]$/.test(value) ? `${value}!${count}` : `${value}${count}`;
+          if (!value) return count === 1 ? "_" : `_!${count}`;
+          return count === 1 ? value : `${value}!${count}`;
         }).join(",");
       }
 
@@ -2453,19 +2570,15 @@
           let count = 1;
           if (token[0] === "_" || token[0] === ".") {
             value = "";
-            const countText = token.slice(1);
+            const countText = token.slice(1).replace(/^!/, "");
             count = countText ? Math.max(1, Math.trunc(clampNumber(countText, 1, CHORD_STEPS, 1))) : 1;
           } else {
-            const digitSeparated = token.match(/^(.*?)(?:!|\.)(\d+)$/);
-            if (digitSeparated) {
-              value = digitSeparated[1];
-              count = Math.max(1, Math.trunc(clampNumber(digitSeparated[2], 1, CHORD_STEPS, 1)));
-            } else {
-              const counted = token.match(/^(.*?)(\d+)$/);
-              if (counted && !/[0-9]$/.test(counted[1])) {
-                value = counted[1];
-                count = Math.max(1, Math.trunc(clampNumber(counted[2], 1, CHORD_STEPS, 1)));
-              }
+            // canonical: chord!N — also accepts legacy chord.N and bare chordN (no digit-ending chord)
+            const separated = token.match(/^(.*?)(?:!|\.)(\d+)$/) ||
+              (!/[0-9]$/.test(token) ? token.match(/^(.*?)(\d+)$/) : null);
+            if (separated) {
+              value = separated[1];
+              count = Math.max(1, Math.trunc(clampNumber(separated[2], 1, CHORD_STEPS, 1)));
             }
           }
           for (let step = 0; step < count && values.length < CHORD_STEPS; step += 1) values.push(value);
@@ -2476,19 +2589,51 @@
 
       function encodeDrumTrack(track) {
         const pattern = drumLengthArray(track).map(drumValueToSymbol).join("");
-        for (const tileLength of [2, 4, 8, 16]) {
+        let best = pattern;
+        for (const tileLength of [1, 2, 4, 8, 16]) {
+          if (DRUM_STEPS % tileLength !== 0) continue;
           const tile = pattern.slice(0, tileLength);
-          if (tile && tile.repeat(DRUM_STEPS / tileLength) === pattern) return `(${tile})${DRUM_STEPS / tileLength}`;
+          if (tile && tile.repeat(DRUM_STEPS / tileLength) === pattern) {
+            const candidate = `(${tile})${DRUM_STEPS / tileLength}`;
+            if (candidate.length < best.length) best = candidate;
+            break;
+          }
         }
-        return pattern;
+        let rle = "";
+        let i = 0;
+        while (i < pattern.length) {
+          const ch = pattern[i];
+          let run = 1;
+          while (i + run < pattern.length && pattern[i + run] === ch) run++;
+          const extra = run - 1;
+          rle += (extra > 0 && 2 + String(extra).length < run) ? `${ch}!${extra}` : ch.repeat(run);
+          i += run;
+        }
+        if (rle.length < best.length) best = rle;
+        return best;
       }
 
       function decodeDrumTrack(encoded) {
         const source = String(encoded || "").trim();
-        let pattern = source;
+        let pattern;
         const tiled = source.match(/^\(([xX\-_]+)\)(\d+)$/);
         if (tiled) {
           pattern = tiled[1].repeat(Math.max(1, Math.trunc(clampNumber(tiled[2], 1, DRUM_STEPS, 1))));
+        } else {
+          pattern = "";
+          let i = 0;
+          while (i < source.length) {
+            const ch = source[i++];
+            if (source[i] === "!") {
+              const m = source.slice(i + 1).match(/^(\d+)/);
+              if (m) {
+                pattern += ch.repeat(1 + Number(m[1]));
+                i += 1 + m[1].length;
+                continue;
+              }
+            }
+            pattern += ch;
+          }
         }
         return [...pattern]
           .slice(0, DRUM_STEPS)
@@ -4807,6 +4952,51 @@
         el.songNoteInput.style.height = el.songNoteInput.scrollHeight + "px";
         savePreset();
       });
+      (function wirePasteDialog() {
+        let pasteSnapshot = null;
+
+        function openPasteDialog() {
+          pasteSnapshot = null;
+          el.pasteInput.value = "";
+          el.pasteError.textContent = "";
+          el.pasteImportBtn.disabled = true;
+          el.pasteDialog.showModal();
+          el.pasteInput.focus();
+        }
+
+        function closePasteDialog(discard = true) {
+          if (discard && pasteSnapshot) discardPreview(pasteSnapshot);
+          pasteSnapshot = null;
+          el.pasteDialog.close();
+        }
+
+        el.pasteOpen.addEventListener("click", openPasteDialog);
+
+        el.pastePlayBtn.addEventListener("click", () => {
+          el.pasteError.textContent = "";
+          const result = previewDubText(el.pasteInput.value);
+          if (result.ok) {
+            pasteSnapshot = result.snapshot;
+            el.pasteImportBtn.disabled = false;
+          } else {
+            el.pasteError.textContent = result.error;
+          }
+        });
+
+        el.pasteImportBtn.addEventListener("click", () => {
+          pasteSnapshot = null; // keep state as-is
+          savePreset();
+          closePasteDialog(false);
+        });
+
+        el.pasteClose.addEventListener("click", () => closePasteDialog(true));
+
+        el.pasteDialog.addEventListener("cancel", (e) => {
+          e.preventDefault();
+          closePasteDialog(true);
+        });
+      })();
+
       el.shareLink.addEventListener("click", () => {
         const url = currentShareUrlV2();
         if (url.length > 7800) {
