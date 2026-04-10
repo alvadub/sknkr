@@ -2660,6 +2660,13 @@
         return url.toString();
       }
 
+      function replaceUrlWithCurrentShareState() {
+        const nextUrl = currentShareUrlV2();
+        const currentUrl = window.location.href;
+        if (nextUrl === currentUrl) return;
+        window.history.replaceState(null, "", nextUrl);
+      }
+
       function applySharedStateFromUrlV2() {
         const params = new URLSearchParams(window.location.search);
         const headerToken = params.get("s");
@@ -2687,6 +2694,7 @@
           applyPresetData(snapshot);
           state.currentProjectId = null;
           state.dirty = false;
+          replaceUrlWithCurrentShareState();
           return true;
         } catch (error) {
           console.warn("Could not load shared URL state v2", error);
@@ -2924,6 +2932,7 @@
           applyPresetData(snapshot);
           state.currentProjectId = null;
           state.dirty = false;
+          replaceUrlWithCurrentShareState();
           return true;
         } catch (error) {
           console.warn("Could not load shared URL state", error);
