@@ -1416,6 +1416,34 @@
         background: rgba(0, 0, 0, 0.68);
       }
 
+      .paste-dialog[open] {
+        grid-template-rows: auto minmax(0, 1fr) auto;
+      }
+
+      .paste-input {
+        font-family: monospace;
+        font-size: 13px;
+        resize: none;
+        border: 1px solid var(--line);
+        border-radius: 0.5rem;
+        outline: none;
+        padding: 0.75rem;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .paste-error {
+        flex: 1;
+        color: #f87171;
+      }
+
+      .paste-error:empty {
+        display: none;
+      }
+
       .catalog-head,
       .catalog-actions {
         display: flex;

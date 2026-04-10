@@ -272,6 +272,22 @@
       <p class="hint">This editor compiles back into the existing 32-step Rhythm and Harmony grid.</p>
     </dialog>
 
-<script src="app.js"></script>
+    <dialog id="paste-dialog" class="catalog-dialog paste-dialog">
+      <div class="catalog-head">
+        <div>
+          <h2>Paste &amp; Play</h2>
+          <p>Paste a DUB snippet or bare block. Hit Play to preview, edit and replay freely, then Import to commit.</p>
+        </div>
+        <button id="paste-close" aria-label="Close">Close</button>
+      </div>
+      <textarea id="paste-input" class="paste-input" spellcheck="false" placeholder="kick:  x---x---x---x---&#10;snare: ----x-------x---&#10;hihat: x-x-x-x-x-x-x-x-&#10;&#10;; or full DUB:&#10;; tempo: 120&#10;@A&#10;#kick 1.0 x---x--- c3"></textarea>
+      <div class="catalog-actions">
+        <span id="paste-error" class="paste-error hint"></span>
+        <button id="paste-play-btn" type="button">Play</button>
+        <button id="paste-import-btn" type="button" disabled>Import</button>
+      </div>
+    </dialog>
+
+    <script src="app.js"></script>
   </body>
 </html>

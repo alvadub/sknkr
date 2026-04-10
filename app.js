@@ -217,7 +217,13 @@
         status: document.getElementById("status"),
         modeListen: document.getElementById("mode-listen"),
         modeEdit: document.getElementById("mode-edit"),
-shareLink: document.getElementById("share-link"),
+        pasteDialog: document.getElementById("paste-dialog"),
+        pasteClose: document.getElementById("paste-close"),
+        pasteInput: document.getElementById("paste-input"),
+        pastePlayBtn: document.getElementById("paste-play-btn"),
+        pasteImportBtn: document.getElementById("paste-import-btn"),
+        pasteError: document.getElementById("paste-error"),
+        shareLink: document.getElementById("share-link"),
         mixerOpen: document.getElementById("mixer-open"),
         mixerDialog: document.getElementById("mixer-dialog"),
         mixerClose: document.getElementById("mixer-close"),
@@ -4945,6 +4951,43 @@ shareLink: document.getElementById("share-link"),
         el.songNoteInput.style.height = el.songNoteInput.scrollHeight + "px";
         savePreset();
       });
+(function wirePasteDialog() {
+  let pasteSnapshot = null;
+  function openPasteDialog() {
+    pasteSnapshot = null;
+    el.pasteInput.value = "";
+    el.pasteError.textContent = "";
+    el.pasteImportBtn.disabled = true;
+    el.pasteDialog.showModal();
+    el.pasteInput.focus();
+  }
+  function closePasteDialog(discard = true) {
+    if (discard && pasteSnapshot) discardPreview(pasteSnapshot);
+    pasteSnapshot = null;
+    el.pasteDialog.close();
+  }
+  el.pastePlayBtn.addEventListener("click", () => {
+    el.pasteError.textContent = "";
+    const result = previewDubText(el.pasteInput.value);
+    if (result.ok) {
+      pasteSnapshot = result.snapshot;
+      el.pasteImportBtn.disabled = false;
+    } else {
+      el.pasteError.textContent = result.error;
+    }
+  });
+  el.pasteImportBtn.addEventListener("click", () => {
+    pasteSnapshot = null;
+    savePreset();
+    closePasteDialog(false);
+  });
+  el.pasteClose.addEventListener("click", () => closePasteDialog(true));
+  el.pasteDialog.addEventListener("cancel", (e) => {
+    e.preventDefault();
+    closePasteDialog(true);
+  });
+})();
+
 el.shareLink.addEventListener("click", () => {
         const url = currentShareUrlV2();
         if (url.length > 7800) {
