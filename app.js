@@ -2376,6 +2376,325 @@
         return parsed.p;
       }
 
+      function encodeChordRle(grid) {
+        const values = fixedLengthArray(grid, "", CHORD_STEPS).map((value) => String(value || "").trim());
+        if (values.every((value) => !value)) return "-";
+        const groups = [];
+        let index = 0;
+        while (index < values.length) {
+          const value = values[index];
+          let count = 1;
+          while (index + count < values.length && values[index + count] === value) count += 1;
+          groups.push({ value, count });
+          index += count;
+        }
+        while (groups.length && !groups[groups.length - 1].value) groups.pop();
+        return groups.map(({ value, count }) => {
+          if (!value) return count === 1 ? "_" : `_${count}`;
+          if (count === 1) return value;
+          return /[0-9]$/.test(value) ? `${value}!${count}` : `${value}${count}`;
+        }).join(",");
+      }
+
+      function decodeChordRle(rle) {
+        const source = String(rle || "").trim();
+        if (!source || source === "-") return Array(CHORD_STEPS).fill("");
+        const values = [];
+        const tokens = source.includes(",") ? source.split(",") : [source];
+        tokens.forEach((rawToken) => {
+          const token = String(rawToken || "").trim();
+          if (!token || values.length >= CHORD_STEPS) return;
+          let value = token;
+          let count = 1;
+          if (token[0] === "_" || token[0] === ".") {
+            value = "";
+            const countText = token.slice(1);
+            count = countText ? Math.max(1, Math.trunc(clampNumber(countText, 1, CHORD_STEPS, 1))) : 1;
+          } else {
+            const digitSeparated = token.match(/^(.*?)(?:!|\.)(\d+)$/);
+            if (digitSeparated) {
+              value = digitSeparated[1];
+              count = Math.max(1, Math.trunc(clampNumber(digitSeparated[2], 1, CHORD_STEPS, 1)));
+            } else {
+              const counted = token.match(/^(.*?)(\d+)$/);
+              if (counted && !/[0-9]$/.test(counted[1])) {
+                value = counted[1];
+                count = Math.max(1, Math.trunc(clampNumber(counted[2], 1, CHORD_STEPS, 1)));
+              }
+            }
+          }
+          for (let step = 0; step < count && values.length < CHORD_STEPS; step += 1) values.push(value);
+        });
+        while (values.length < CHORD_STEPS) values.push("");
+        return values.slice(0, CHORD_STEPS);
+      }
+
+      function encodeDrumTrack(track) {
+        const pattern = drumLengthArray(track).map(drumValueToSymbol).join("");
+        for (const tileLength of [2, 4, 8, 16]) {
+          const tile = pattern.slice(0, tileLength);
+          if (tile && tile.repeat(DRUM_STEPS / tileLength) === pattern) return `(${tile})${DRUM_STEPS / tileLength}`;
+        }
+        return pattern;
+      }
+
+      function decodeDrumTrack(encoded) {
+        const source = String(encoded || "").trim();
+        let pattern = source;
+        const tiled = source.match(/^\(([xX\-_]+)\)(\d+)$/);
+        if (tiled) {
+          pattern = tiled[1].repeat(Math.max(1, Math.trunc(clampNumber(tiled[2], 1, DRUM_STEPS, 1))));
+        }
+        return [...pattern]
+          .slice(0, DRUM_STEPS)
+          .map((symbol) => {
+            if (symbol === "X") return 1;
+            if (symbol === "x") return 0.75;
+            return 0;
+          })
+          .concat(Array(Math.max(0, DRUM_STEPS - pattern.length)).fill(0))
+          .slice(0, DRUM_STEPS);
+      }
+
+      function encodeHeader() {
+        const tokens = [];
+        const title = String(state.songTitle || "").trim();
+        const meta = [`t${state.bpm}`];
+        if (title && title !== "Untitled Project") meta.push(String(CHORD_STEPS), utf8ToBase64Url(title));
+        else if (CHORD_STEPS !== 32) meta.push(String(CHORD_STEPS));
+        tokens.push(meta.join("."));
+
+        const drumSounds = TRACKS.map((track) => state.sounds.drums[track.key]);
+        const drumToken = drumSounds.every((value) => value === drumSounds[0])
+          ? drumSounds[0]
+          : drumSounds.join("-");
+        if (
+          state.sounds.rhythm !== "organ"
+          || state.sounds.harmony !== "pad"
+          || drumSounds.some((value) => value !== "internal")
+          || state.bass.preset !== "sub"
+        ) {
+          tokens.push(`k${state.sounds.rhythm}.${state.sounds.harmony}.${drumToken}.${state.bass.preset}`);
+        }
+
+        const mixValues = [
+          Math.round(state.volumes.master * 100),
+          Math.round(state.volumes.rhythm * 100),
+          Math.round(state.volumes.harmony * 100),
+          Math.round(state.volumes.drums * 100),
+          Math.round(state.bass.volume * 100),
+        ];
+        const mixIsDefault = mixValues.join(".") === "80.55.35.75.65";
+        const timings = [Math.round(state.strumLength * 100), Math.round(state.padAttack * 100)];
+        if (!mixIsDefault || timings[0] !== 12 || timings[1] !== 8) {
+          tokens.push(`m${mixValues.join(".")}${timings[0] === 12 && timings[1] === 8 ? "" : `.${timings.join(".")}`}`);
+        }
+
+        const bassDefaults = {
+          enabled: false,
+          preset: "sub",
+          octave: 2,
+          filter: 420,
+          glide: 4,
+          release: 22,
+        };
+        const bassValues = {
+          enabled: state.bass.enabled ? 1 : 0,
+          preset: state.bass.preset,
+          octave: state.bass.octave,
+          filter: Math.round(state.bass.filter),
+          glide: Math.round(state.bass.glide * 100),
+          release: Math.round(state.bass.release * 100),
+        };
+        if (
+          bassValues.enabled !== Number(bassDefaults.enabled)
+          || bassValues.preset !== bassDefaults.preset
+          || bassValues.octave !== bassDefaults.octave
+          || bassValues.filter !== bassDefaults.filter
+          || bassValues.glide !== bassDefaults.glide
+          || bassValues.release !== bassDefaults.release
+        ) {
+          tokens.push(`b${bassValues.enabled}.${bassValues.preset}.${bassValues.octave}.${bassValues.filter}.${bassValues.glide}.${bassValues.release}`);
+        }
+
+        return tokens.join(",");
+      }
+
+      function decodeHeader(token) {
+        const snapshot = {};
+        String(token || "").split(",").forEach((part) => {
+          if (!part) return;
+          if (part.startsWith("t")) {
+            const fields = part.slice(1).split(".");
+            const bpm = Math.trunc(clampNumber(fields[0], 60, 200, 100));
+            snapshot.bpm = bpm;
+            if (fields.length >= 3 && fields[2]) {
+              try {
+                snapshot.songTitle = base64UrlToUtf8(fields[2]).trim();
+              } catch (error) {
+                console.warn("Could not decode shared title", error);
+              }
+            }
+            return;
+          }
+          if (part.startsWith("k")) {
+            const [rhythm, harmony, drumToken, bassPreset] = part.slice(1).split(".");
+            const drums = {};
+            const drumValues = String(drumToken || "").split("-");
+            TRACKS.forEach((track, index) => {
+              const candidate = drumValues.length === TRACKS.length ? drumValues[index] : drumValues[0];
+              drums[track.key] = Object.prototype.hasOwnProperty.call(DRUM_KIT_CATALOG, candidate) ? candidate : "internal";
+            });
+            snapshot.sounds = {
+              rhythm: Object.prototype.hasOwnProperty.call(SOUND_CATALOG, rhythm) ? rhythm : "organ",
+              harmony: Object.prototype.hasOwnProperty.call(SOUND_CATALOG, harmony) ? harmony : "pad",
+              drums,
+            };
+            snapshot.bass = {
+              ...(snapshot.bass || {}),
+              preset: Object.prototype.hasOwnProperty.call(BASS_PRESETS, bassPreset) ? bassPreset : "sub",
+            };
+            return;
+          }
+          if (part.startsWith("m")) {
+            const [master, rhythm, harmony, drums, bass, strumLength, padAttack] = part.slice(1).split(".");
+            snapshot.volumes = {
+              master: clampNumber(Number(master) / 100, 0, 1, 0.8),
+              rhythm: clampNumber(Number(rhythm) / 100, 0, 1, 0.55),
+              harmony: clampNumber(Number(harmony) / 100, 0, 1, 0.35),
+              drums: clampNumber(Number(drums) / 100, 0, 1, 0.75),
+            };
+            snapshot.bass = {
+              ...(snapshot.bass || {}),
+              volume: clampNumber(Number(bass) / 100, 0, 1, 0.65),
+            };
+            if (strumLength !== undefined) snapshot.strumLength = clampNumber(Number(strumLength) / 100, 0.05, 0.25, 0.12);
+            if (padAttack !== undefined) snapshot.padAttack = clampNumber(Number(padAttack) / 100, 0.02, 0.4, 0.08);
+            return;
+          }
+          if (part.startsWith("b")) {
+            const [enabled, preset, octave, filter, glide, release] = part.slice(1).split(".");
+            snapshot.bass = {
+              ...(snapshot.bass || {}),
+              enabled: enabled === "1",
+              preset: Object.prototype.hasOwnProperty.call(BASS_PRESETS, preset) ? preset : (snapshot.bass?.preset || "sub"),
+              octave: Math.trunc(clampNumber(octave, 0, 4, 2)),
+              filter: clampNumber(filter, 120, 1800, 420),
+              glide: clampNumber(Number(glide) / 100, 0, 0.2, 0.04),
+              release: clampNumber(Number(release) / 100, 0.04, 1, 0.22),
+            };
+          }
+        });
+        return snapshot;
+      }
+
+      function encodeScene(scene) {
+        const normalizedScene = normalizeScene(scene, 0);
+        const parts = [
+          encodeChordRle(normalizedScene.rhythm),
+          encodeChordRle(normalizedScene.harmony),
+          TRACKS.map((track) => encodeDrumTrack(normalizedScene.drums[track.key])).join(":"),
+        ];
+        if (normalizedScene.bass.length) {
+          const notes = utf8ToBase64Url(formatBassNotes(normalizedScene.bass));
+          const pattern = formatBassPattern(normalizedScene.bass).replace(/\s+/g, "");
+          parts.push(`${notes}:${pattern}`);
+        }
+        let muteBits = 0;
+        if (normalizedScene.mutes.rhythm) muteBits |= 1 << 0;
+        if (normalizedScene.mutes.harmony) muteBits |= 1 << 1;
+        if (normalizedScene.mutes.bass) muteBits |= 1 << 2;
+        TRACKS.forEach((track, index) => {
+          if (normalizedScene.mutes.drums[track.key]) muteBits |= 1 << (index + 3);
+        });
+        if (muteBits) parts.push(muteBits.toString(16));
+        return parts.join(".");
+      }
+
+      function decodeScene(token, index) {
+        const parts = String(token || "").split(".");
+        const [rhythmRle = "-", harmonyRle = "-", drumsEnc = "(-)32:(-)32:(-)32:(-)32", bassEnc = "", mutesHex = ""] = parts;
+        const drumParts = drumsEnc.split(":");
+        const bassParts = bassEnc ? bassEnc.split(":") : [];
+        const bassNotes = bassParts[0] ? base64UrlToUtf8(bassParts[0]) : "";
+        const bassPattern = bassParts[1] || "";
+        const bassEvents = bassNotes && bassPattern ? (bassPatternToEvents(bassNotes, bassPattern) || []) : [];
+        const muteValue = Number.parseInt(mutesHex || "0", 16) || 0;
+        return normalizeScene({
+          rhythm: decodeChordRle(rhythmRle),
+          harmony: decodeChordRle(harmonyRle),
+          bass: bassEvents,
+          bassText: bassNotes || bassPattern ? { notes: bassNotes, pattern: bassPattern } : undefined,
+          drums: Object.fromEntries(TRACKS.map((track, trackIndex) => [
+            track.key,
+            decodeDrumTrack(drumParts[trackIndex] || "(-)32"),
+          ])),
+          mutes: {
+            rhythm: Boolean(muteValue & (1 << 0)),
+            harmony: Boolean(muteValue & (1 << 1)),
+            bass: Boolean(muteValue & (1 << 2)),
+            drums: Object.fromEntries(TRACKS.map((track, trackIndex) => [
+              track.key,
+              Boolean(muteValue & (1 << (trackIndex + 3))),
+            ])),
+          },
+        }, index);
+      }
+
+      function collectIndexed(params, key) {
+        const values = [];
+        for (const [paramKey, value] of params.entries()) {
+          const match = paramKey.match(new RegExp(`^${key}\\[(\\d+)\\]$`));
+          if (!match) continue;
+          values[Number(match[1])] = value;
+        }
+        return values.filter((value) => value !== undefined);
+      }
+
+      function currentShareUrlV2() {
+        const url = new URL(`${window.location.origin}${window.location.pathname}`);
+        url.searchParams.set("s", encodeHeader());
+        state.scenes.forEach((scene, index) => {
+          url.searchParams.set(`s[${index}]`, encodeScene(scene));
+        });
+        return url.toString();
+      }
+
+      function applySharedStateFromUrlV2() {
+        const params = new URLSearchParams(window.location.search);
+        const headerToken = params.get("s");
+        if (!headerToken) return false;
+        try {
+          const header = decodeHeader(headerToken);
+          const scenes = collectIndexed(params, "s").map((sceneToken, index) => decodeScene(sceneToken, index));
+          if (!scenes.length) return false;
+          const snapshot = defaultProjectSnapshot();
+          if (header.songTitle) snapshot.songTitle = header.songTitle;
+          if (header.bpm) snapshot.bpm = header.bpm;
+          if (header.sounds) {
+            snapshot.sounds = {
+              rhythm: header.sounds.rhythm,
+              harmony: header.sounds.harmony,
+              drums: normalizeDrumSounds(header.sounds.drums, snapshot.sounds.drums),
+            };
+          }
+          if (header.volumes) snapshot.volumes = { ...snapshot.volumes, ...header.volumes };
+          if (header.strumLength !== undefined) snapshot.strumLength = header.strumLength;
+          if (header.padAttack !== undefined) snapshot.padAttack = header.padAttack;
+          if (header.bass) snapshot.bass = normalizeBassSettings({ ...snapshot.bass, ...header.bass });
+          snapshot.scenes = scenes;
+          snapshot.currentScene = 0;
+          applyPresetData(snapshot);
+          state.currentProjectId = null;
+          state.dirty = false;
+          return true;
+        } catch (error) {
+          console.warn("Could not load shared URL state v2", error);
+          el.status.textContent = "Invalid shared URL payload";
+          return false;
+        }
+      }
+
       function applyPresetData(preset) {
         if (!preset || typeof preset !== "object") return;
         state.uiMode = normalizeUiMode(preset.uiMode);
@@ -2591,14 +2910,6 @@
         releaseAllBassNotes();
         renderAll();
         el.status.textContent = "Cleared working project";
-      }
-
-      function currentShareUrl() {
-        const snapshot = presetSnapshot();
-        const payload = encodeShareState(snapshot);
-        const params = new URLSearchParams(window.location.search);
-        const base = `${window.location.origin}${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-        return `${base}#${SHARE_HASH_KEY}=${payload}`;
       }
 
       function applySharedStateFromUrl() {
@@ -4379,7 +4690,7 @@
         savePreset();
       });
       el.shareLink.addEventListener("click", () => {
-        const url = currentShareUrl();
+        const url = currentShareUrlV2();
         if (url.length > 7800) {
           el.status.textContent = "Shared URL is large";
         }
@@ -4583,6 +4894,6 @@
       loadUserChordPresets();
       loadProjects();
       loadPreset();
-      applySharedStateFromUrl();
+      if (!applySharedStateFromUrlV2()) applySharedStateFromUrl();
       applyUrlPresetIdentity();
       renderAll();
