@@ -1,6 +1,9 @@
 {
   "name": "sknkr",
   "type": "module",
+  "bin": {
+    "dub": "./bin/dub.js"
+  },
   "scripts": {
     "test": "bun test"
   },
