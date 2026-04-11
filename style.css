@@ -1422,7 +1422,9 @@
       }
 
       .drum-pattern-preview span[data-step]:hover,
-      .chord-pattern-preview span[data-step]:hover {
+      .chord-pattern-preview span[data-step]:hover,
+      .drum-pattern-preview span[data-step].input-hover,
+      .chord-pattern-preview span[data-step].input-hover {
         background: rgba(255, 255, 255, 0.1);
       }
 
