@@ -265,6 +265,19 @@
         line-height: inherit;
       }
 
+      .chord-pattern-preview,
+      .chord-pool-preview,
+      .bass-pattern-preview,
+      .bass-notes-preview,
+      .drum-pattern-preview,
+      .chord-pattern-input,
+      .chord-pool-input,
+      .bass-pattern-input,
+      .bass-notes-input,
+      .drum-pattern-input {
+          font-size: 1.33rem !important;
+      }
+
       .foundation-probe {
         margin-top: 1rem;
         padding-top: 1rem;
