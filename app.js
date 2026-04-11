@@ -26,6 +26,17 @@ import {
   extractDraftTempo,
   getMaxPatternSlots,
 } from "./lib/playground.js";
+import {
+  INTERNAL_SYNTH_PRESETS, DEFAULT_CHORD_CATALOG, DEFAULT_INTERNAL_RHYTHM, DEFAULT_INTERNAL_HARMONY,
+  SOUND_CATALOG, SOUND_CHOICES, BASS_PRESETS, BASS_SHAPES, DRUM_KIT_CATALOG, WEBAUDIOFONT_PLAYER_URL,
+} from "./lib/audio-data.js";
+import {
+  ROOTS, QUALITY_ALIASES, midiToHz, canonicalRoot, normalizeQuality, qualityFromToken,
+  parseChordToken, chordName, isInvalidCatalogName, parseNoteName, parseNoteList, parseChord,
+} from "./lib/audio-math.js";
+import { getInternalSynthParams, playInternalChord, playDrumInternal } from "./lib/audio-voices.js";
+import { createAudioGraph } from "./lib/audio-graph.js";
+import { getWebAudioFontPlayer, loadSoundProfile } from "./lib/audio-loader.js";
 
       const LOOP_STEPS = STEPS;
       const INITIAL_SCENE_COUNT = 4;
@@ -39,38 +50,6 @@ import {
         { key: "rhythm", label: "Rhythm" },
         { key: "harmony", label: "Harmony" },
       ];
-      const ROOTS = {
-        C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5,
-        "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11,
-      };
-      const QUALITY_ALIASES = {
-        "": { name: "", intervals: [0, 4, 7] },
-        m: { name: "m", intervals: [0, 3, 7] },
-        min: { name: "m", intervals: [0, 3, 7] },
-        minor: { name: "m", intervals: [0, 3, 7] },
-        dim: { name: "dim", intervals: [0, 3, 6] },
-        aug: { name: "aug", intervals: [0, 4, 8] },
-        maj7: { name: "maj7", intervals: [0, 4, 7, 11] },
-        major7: { name: "maj7", intervals: [0, 4, 7, 11] },
-        M7: { name: "maj7", intervals: [0, 4, 7, 11] },
-        "7": { name: "7", intervals: [0, 4, 7, 10] },
-        m7: { name: "m7", intervals: [0, 3, 7, 10] },
-        min7: { name: "m7", intervals: [0, 3, 7, 10] },
-        dim7: { name: "dim7", intervals: [0, 3, 6, 9] },
-        m7b5: { name: "m7b5", intervals: [0, 3, 6, 10] },
-        min7b5: { name: "m7b5", intervals: [0, 3, 6, 10] },
-        sus2: { name: "sus2", intervals: [0, 2, 7] },
-        sus4: { name: "sus4", intervals: [0, 5, 7] },
-      };
-      const DEFAULT_CHORD_CATALOG = {
-        C: "c4,e4,g4",
-        F: "f4,a4,c5",
-        G: "g3,b3,d4",
-        C7: "c4,e4,g4,bb4",
-        F7: "f4,a4,c5,eb5",
-        G7: "g3,b3,d4,f4",
-        Cm: "c4,eb4,g4",
-      };
       const PRESET_NAME = "default";
       const STORAGE_KEY = `SKNKR:preset:${PRESET_NAME}:v1`;
       const PROJECTS_STORAGE_KEY = "SKNKR:projects:v1";
@@ -78,79 +57,12 @@ import {
       const USER_CHORD_PRESETS_KEY = "SKNKR:chord-progressions:v1";
       const SHARE_HASH_KEY = "s";
       const SHARE_STATE_VERSION = 1;
-      const WEBAUDIOFONT_PLAYER_URL = "https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js";
-      const INTERNAL_SYNTH_PRESETS = {
-        sub: { label: "Sub Bass", filter: 380, release: 0.25, shape: "sine", detune: 0, gain: 0.9 },
-        organ: { label: "Organ", filter: 1200, release: 0.18, shape: "triangle", detune: -2, gain: 0.7 },
-        pad: { label: "Warm Pad", filter: 600, release: 0.5, shape: "sine", detune: 0, gain: 0.5 },
-        string: { label: "Strings", filter: 2500, release: 0.6, shape: "sawtooth", detune: 3, gain: 0.4, mix: 0.5 },
-        brass: { label: "Brass", filter: 1800, release: 0.2, shape: "sawtooth", detune: -5, gain: 0.65 },
-        synth: { label: "Synth", filter: 2000, release: 0.15, shape: "square", detune: 6, gain: 0.6 },
-        flute: { label: "Flute", filter: 1400, release: 0.25, shape: "sine", detune: -1, gain: 0.5 },
-        clav: { label: "Clav", filter: 3000, release: 0.08, shape: "square", detune: 2, gain: 0.55 },
-      };
-      const DEFAULT_INTERNAL_RHYTHM = "organ";
-      const DEFAULT_INTERNAL_HARMONY = "pad";
-      const SOUND_CATALOG = {
-        internal: { label: "Internal Synth" },
-        sub: { label: "Sub Bass", type: "internal", preset: "sub" },
-        organ: { label: "Organ", type: "internal", preset: "organ" },
-        pad: { label: "Warm Pad", type: "internal", preset: "pad" },
-        string: { label: "Strings", type: "internal", preset: "string" },
-        brass: { label: "Brass", type: "internal", preset: "brass" },
-        synth: { label: "Synth", type: "internal", preset: "synth" },
-        flute: { label: "Flute", type: "internal", preset: "flute" },
-        clav: { label: "Clav", type: "internal", preset: "clav" },
-        piano: {
-          label: "Acoustic Grand Piano",
-          playerUrl: "https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js",
-          presetUrl: "https://surikov.github.io/webaudiofontdata/sound/0000_Aspirin_sf2_file.js",
-          presetName: "_tone_0000_Aspirin_sf2_file",
-        },
-        guitar: {
-          label: "Clean Electric Guitar",
-          playerUrl: "https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js",
-          presetUrl: "https://surikov.github.io/webaudiofontdata/sound/0270_SoundBlasterOld_sf2.js",
-          presetName: "_tone_0270_SoundBlasterOld_sf2",
-        },
-        strings: {
-          label: "String Ensemble",
-          playerUrl: "https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js",
-          presetUrl: "https://surikov.github.io/webaudiofontdata/sound/0480_SBLive_sf2.js",
-          presetName: "_tone_0480_SBLive_sf2",
-        },
-      };
-      const SOUND_CHOICES = {
-        rhythm: ["organ", "sub", "synth", "brass", "flute", "clav", "pad", "string", "piano", "guitar", "strings"],
-        harmony: ["pad", "string", "flute", "organ", "brass", "clav", "synth", "sub", "piano", "guitar"],
-      };
-      const BASS_PRESETS = {
-        sub: { label: "Sub Sine", shape: "sine", filter: 420, glide: 0.04, release: 0.22 },
-        dub: { label: "Dub Triangle", shape: "triangle", filter: 520, glide: 0.08, release: 0.32 },
-        rubber: { label: "Rubber Saw", shape: "sawtooth", filter: 360, glide: 0.06, release: 0.18 },
-        square: { label: "Square Bass", shape: "square", filter: 640, glide: 0.03, release: 0.14 },
-        custom: { label: "Custom", shape: "sine", filter: 520, glide: 0.04, release: 0.2 },
-      };
-      const BASS_SHAPES = ["sine", "triangle", "sawtooth", "square"];
       const BASS_KEYS = [
         ["KeyA", 0], ["KeyW", 1], ["KeyS", 2], ["KeyE", 3], ["KeyD", 4], ["KeyF", 5],
         ["KeyT", 6], ["KeyG", 7], ["KeyY", 8], ["KeyH", 9], ["KeyU", 10], ["KeyJ", 11], ["KeyK", 12],
         ["KeyO", 13], ["KeyL", 14], ["KeyP", 15], ["Semicolon", 16],
       ];
       const BASS_KEY_MAP = new Map(BASS_KEYS);
-      const DRUM_KIT_CATALOG = {
-        internal: { label: "Internal Drums" },
-        standard: { label: "WebAudioFont Standard Kit", suffix: "0_FluidR3_GM_sf2_file" },
-        room: { label: "WebAudioFont Room Kit", suffix: "8_FluidR3_GM_sf2_file" },
-        power: { label: "WebAudioFont Power Kit", suffix: "16_FluidR3_GM_sf2_file" },
-        electronic: { label: "WebAudioFont Electronic Kit", suffix: "20_FluidR3_GM_sf2_file" },
-        tr808: { label: "WebAudioFont TR-808 Kit", suffix: "21_FluidR3_GM_sf2_file" },
-        tr78: { label: "WebAudioFont TR-78 Kit", suffix: "25_FluidR3_GM_sf2_file" },
-        cr8000: { label: "WebAudioFont CR-8000 Kit", suffix: "26_FluidR3_GM_sf2_file" },
-        jazz: { label: "WebAudioFont Jazz Kit", suffix: "22_FluidR3_GM_sf2_file" },
-        brush: { label: "WebAudioFont Brush Kit", suffix: "27_FluidR3_GM_sf2_file" },
-        orchestra: { label: "WebAudioFont Orchestra Kit", suffix: "30_FluidR3_GM_sf2_file" },
-      };
       const DRUM_MIDI = {
         kick: 36,
         snare: 38,
@@ -226,13 +138,10 @@ import {
       let draggedStep = null;
       let draggedSceneIndex = null;
       let suppressNextStepClick = false;
-      let webAudioFontPlayer = null;
       let lastBassMidi = null;
       let foundationProbeSnapshot = null;
       let foundationProbeAudioContext = null;
       let foundationProbeStopTimer = null;
-      const webAudioFontPresets = new Map();
-      const webAudioFontLoading = new Map();
       const activeBassNotes = new Map();
 
       const el = {
@@ -421,150 +330,18 @@ import {
         return icons[name] || "";
       }
 
-      function midiToHz(midi) {
-        return 440 * Math.pow(2, (midi - 69) / 12);
-      }
-
-      function canonicalRoot(rawRoot) {
-        const letter = rawRoot[0].toUpperCase();
-        const accidental = rawRoot.slice(1);
-        return `${letter}${accidental}`;
-      }
-
-      function normalizeQuality(rawQuality) {
-        return String(rawQuality || "")
-          .replace(/^maj$/i, "")
-          .replace(/^major$/i, "")
-          .replace(/^minor/i, "min")
-          .replace(/^min/i, "min");
-      }
-
-      function qualityFromToken(rawQuality) {
-        const normalizedQuality = normalizeQuality(rawQuality);
-        const qualityKey = Object.prototype.hasOwnProperty.call(QUALITY_ALIASES, rawQuality)
-          ? rawQuality
-          : Object.keys(QUALITY_ALIASES).find((key) => key.toLowerCase() === normalizedQuality.toLowerCase());
-        return QUALITY_ALIASES[qualityKey === undefined ? null : qualityKey] || null;
-      }
-
-      function parseChordToken(rawToken) {
-        const token = String(rawToken || "").trim();
-        if (!token || /\s/.test(token)) return null;
-        const parts = token.split("/");
-        if (parts.length > 2) return null;
-        const chordMatch = parts[0].match(/^([A-Ga-g](?:#|b)?)(.*)$/);
-        if (!chordMatch) return null;
-        const root = canonicalRoot(chordMatch[1]);
-        if (!(root in ROOTS)) return null;
-        const quality = qualityFromToken(chordMatch[2]);
-        if (!quality) return null;
-        let bass = null;
-        if (parts[1] !== undefined) {
-          const bassMatch = parts[1].match(/^([A-Ga-g](?:#|b)?)$/);
-          if (!bassMatch) return null;
-          bass = canonicalRoot(bassMatch[1]);
-          if (!(bass in ROOTS)) return null;
-        }
-        return {
-          root,
-          quality,
-          bass,
-          label: `${root}${quality.name}${bass ? `/${bass}` : ""}`,
-          baseLabel: `${root}${quality.name}`,
-        };
-      }
-
-      function chordName(rawChord) {
-        const cleanedChord = String(rawChord || "").split("=")[0].trim();
-        return parseChordToken(cleanedChord)?.label || cleanedChord;
-      }
-
-      function isInvalidCatalogName(rawName) {
-        const cleanedName = String(rawName || "").trim();
-        if (!cleanedName) return false;
-        return !parseChordToken(cleanedName);
-      }
-
-      function parseNoteName(rawNote) {
-        const match = String(rawNote || "").trim().match(/^([A-Ga-g](?:#|b)?)(-?\d+)$/);
-        if (!match) return null;
-        const root = canonicalRoot(match[1]);
-        if (!(root in ROOTS)) return null;
-        const octave = Number(match[2]);
-        const midi = (octave + 1) * 12 + ROOTS[root];
-        return { label: `${root.toLowerCase()}${octave}`, midi, frequency: midiToHz(midi) };
-      }
-
-      function parseNoteList(rawNotes) {
-        const notes = String(rawNotes || "").split(",").map(parseNoteName);
-        if (!notes.length || notes.some((note) => !note)) return null;
-        return notes;
-      }
-
-      function bassMidi(root, referenceMidi) {
-        let midi = Math.floor(referenceMidi / 12) * 12 + ROOTS[root];
-        while (midi > referenceMidi) midi -= 12;
-        return midi;
-      }
-
-      function parseChord(rawChord, baseMidi = 60) {
-        const raw = String(rawChord || "").trim();
-        if (!raw) return null;
-        const [chordPart, voicingPart] = raw.split("=").map((part) => part.trim());
-        const chordToken = parseChordToken(chordPart);
-        if (!chordToken) return null;
-        const key = chordToken.label;
-
-        if (voicingPart !== undefined) {
-          const notes = parseNoteList(voicingPart);
-          if (!notes) return null;
-          return {
-            label: `${key}=${notes.map((note) => note.label).join(",")}`,
-            midi: notes.map((note) => note.midi),
-            frequencies: notes.map((note) => note.frequency),
-          };
-        }
-
-        const catalogKey = state.chordCatalog[key] ? key : chordToken.baseLabel;
-        const catalogNotes = state.chordCatalog[catalogKey] ? parseNoteList(state.chordCatalog[catalogKey]) : null;
-        if (catalogNotes) {
-          const midi = catalogNotes.map((note) => note.midi);
-          if (chordToken.bass) midi.unshift(bassMidi(chordToken.bass, Math.min(...midi)));
-          return {
-            label: key,
-            midi,
-            frequencies: midi.map(midiToHz),
-          };
-        }
-
-        const rootMidi = baseMidi + ROOTS[chordToken.root];
-        const midi = chordToken.quality.intervals.map((interval) => rootMidi + interval);
-        if (chordToken.bass) midi.unshift(bassMidi(chordToken.bass, rootMidi));
-        return {
-          label: key,
-          midi,
-          frequencies: midi.map(midiToHz),
-        };
-      }
 
       function ensureAudio() {
         if (audioContext) return;
         const Context = window.AudioContext || window.webkitAudioContext;
         audioContext = new Context();
-        masterGain = audioContext.createGain();
-        rhythmGain = audioContext.createGain();
-        harmonyGain = audioContext.createGain();
-        drumGain = audioContext.createGain();
-        bassGain = audioContext.createGain();
-        drumTrackGains = Object.fromEntries(TRACKS.map((track) => {
-          const gain = audioContext.createGain();
-          gain.connect(drumGain);
-          return [track.key, gain];
-        }));
-        rhythmGain.connect(masterGain);
-        harmonyGain.connect(masterGain);
-        drumGain.connect(masterGain);
-        bassGain.connect(masterGain);
+        const graph = createAudioGraph(audioContext, TRACKS.map((t) => t.key));
+        masterGain = graph.masterGain;
+        rhythmGain = graph.rhythmGain;
+        harmonyGain = graph.harmonyGain;
+        drumGain = graph.drumGain;
+        bassGain = graph.bassGain;
+        drumTrackGains = graph.drumTrackGains;
         masterGain.connect(audioContext.destination);
         applyVolumes();
       }
@@ -630,119 +407,39 @@ import {
         return normalizeChordCatalog(parsed);
       }
 
-      function loadScriptOnce(src) {
-        const existing = document.querySelector(`script[src="${src}"]`);
-        if (existing) {
-          return existing.dataset.loaded === "true"
-            ? Promise.resolve()
-            : new Promise((resolve, reject) => {
-              existing.addEventListener("load", resolve, { once: true });
-              existing.addEventListener("error", reject, { once: true });
-            });
-        }
-
-        return new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = src;
-          script.async = true;
-          script.addEventListener("load", () => {
-            script.dataset.loaded = "true";
-            resolve();
-          }, { once: true });
-          script.addEventListener("error", reject, { once: true });
-          document.head.append(script);
-        });
-      }
-
-      function ensureWebAudioFontPreset(sound) {
-        if (!sound?.playerUrl) return Promise.resolve(null);
-        if (webAudioFontPresets.has(sound.presetName)) return Promise.resolve(webAudioFontPresets.get(sound.presetName));
-        if (webAudioFontLoading.has(sound.presetName)) return webAudioFontLoading.get(sound.presetName);
-
-        const loading = loadScriptOnce(sound.playerUrl)
-          .then(() => {
-            if (typeof window.WebAudioFontPlayer !== "function") throw new Error("WebAudioFontPlayer was not loaded");
-            webAudioFontPlayer = webAudioFontPlayer || new window.WebAudioFontPlayer();
-            webAudioFontPlayer.loader.startLoad(audioContext, sound.presetUrl, sound.presetName);
-            return new Promise((resolve) => {
-              webAudioFontPlayer.loader.waitLoad(() => {
-                const preset = window[sound.presetName];
-                if (preset) webAudioFontPresets.set(sound.presetName, preset);
-                resolve(preset || null);
-              });
-            });
-          })
-          .catch((error) => {
-            console.warn(`Could not load ${sound.label}`, error);
-            savePreset();
-            return null;
-          })
-          .finally(() => {
-            webAudioFontLoading.delete(sound.presetName);
-          });
-
-        webAudioFontLoading.set(sound.presetName, loading);
-        return loading;
+      async function ensureWebAudioFontPreset(sound) {
+        if (!sound?.playerUrl) return null;
+        await loadSoundProfile(audioContext, sound.presetName, { [sound.presetName]: sound });
+        return window[sound.presetName] || null;
       }
 
       async function ensureSelectedSounds() {
-        const loading = [];
-        const rhythmSound = SOUND_CATALOG[state.sounds.rhythm];
-        const harmonySound = SOUND_CATALOG[state.sounds.harmony];
-        if (rhythmSound?.playerUrl) loading.push(ensureWebAudioFontPreset(rhythmSound));
-        if (harmonySound?.playerUrl) loading.push(ensureWebAudioFontPreset(harmonySound));
-        TRACKS.forEach((track) => {
-          const drumSound = drumSoundDefinition(state.sounds.drums[track.key], track.key);
-          if (drumSound) loading.push(ensureWebAudioFontPreset(drumSound));
-        });
-        await Promise.all(loading);
-      }
-
-      function getInternalSynthParams(soundKey) {
-        const key = SOUND_CATALOG[soundKey]?.preset || "synth";
-        return INTERNAL_SYNTH_PRESETS[key] || INTERNAL_SYNTH_PRESETS.synth;
-      }
-
-      function playInternalChord(frequencies, output, time, strumLength, release) {
-        const synthParams = getInternalSynthParams(state.sounds.rhythm);
-        const filter = audioContext.createBiquadFilter();
-        filter.type = "lowpass";
-        filter.frequency.setValueAtTime(synthParams.filter, time);
-        const gainNode = audioContext.createGain();
-        const baseGain = synthParams.gain || 0.6;
-        const gainValue = baseGain / Math.max(1, frequencies.length);
-        gainNode.gain.setValueAtTime(0.0001, time);
-        gainNode.gain.exponentialRampToValueAtTime(gainValue, time + 0.003);
-        gainNode.gain.exponentialRampToValueAtTime(gainValue * 0.3, time + strumLength * 0.7);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, time + strumLength);
-        gainNode.connect(filter);
-        filter.connect(output);
-        frequencies.forEach((frequency, index) => {
-          const osc = audioContext.createOscillator();
-          osc.type = synthParams.shape || "sawtooth";
-          osc.frequency.setValueAtTime(frequency, time);
-          osc.detune.setValueAtTime((synthParams.detune || 0) + index * 3, time);
-          osc.connect(gainNode);
-          osc.start(time);
-          osc.stop(time + strumLength + release + 0.02);
-        });
+        const soundDefs = [
+          { key: state.sounds.rhythm, catalog: SOUND_CATALOG },
+          { key: state.sounds.harmony, catalog: SOUND_CATALOG },
+          ...TRACKS.map((track) => {
+            const def = drumSoundDefinition(state.sounds.drums[track.key], track.key);
+            return def ? { key: def.presetName, catalog: { [def.presetName]: def } } : null;
+          }).filter(Boolean),
+        ];
+        await Promise.all(soundDefs.map(({ key, catalog }) => loadSoundProfile(audioContext, key, catalog)));
       }
 
       function playRhythm(chord, time) {
-        const parsed = parseChord(chord, 55);
+        const parsed = parseChord(chord, 55, state.chordCatalog);
         if (!parsed || !audioContext) return;
 
         const sound = SOUND_CATALOG[state.sounds.rhythm];
-        const preset = sound?.presetName ? webAudioFontPresets.get(sound.presetName) : null;
-        if (webAudioFontPlayer && preset) {
-          webAudioFontPlayer.queueChord(audioContext, rhythmGain, preset, time, parsed.midi, state.strumLength, 0.8);
+        const player = getWebAudioFontPlayer();
+        const preset = sound?.presetName ? window[sound.presetName] : null;
+        if (player && preset) {
+          player.queueChord(audioContext, rhythmGain, preset, time, parsed.midi, state.strumLength, 0.8);
           return;
         }
 
         const output = audioContext.createGain();
         output.connect(rhythmGain);
-
-        playInternalChord(parsed.frequencies, output, time, state.strumLength, 0.15);
+        playInternalChord(audioContext, parsed.frequencies, output, time, state.strumLength, 0.15, getInternalSynthParams(state.sounds.rhythm));
       }
 
       function releaseHarmony(time) {
@@ -771,7 +468,7 @@ import {
       }
 
       function playHarmony(chord, time) {
-        const parsed = parseChord(chord, 48);
+        const parsed = parseChord(chord, 48, state.chordCatalog);
         if (!parsed || !audioContext) {
           releaseHarmony(time);
           return;
@@ -781,11 +478,12 @@ import {
         releaseHarmony(time);
 
         const sound = SOUND_CATALOG[state.sounds.harmony];
-        const preset = sound?.presetName ? webAudioFontPresets.get(sound.presetName) : null;
-        if (webAudioFontPlayer && preset) {
+        const player = getWebAudioFontPlayer();
+        const preset = sound?.presetName ? window[sound.presetName] : null;
+        if (player && preset) {
           harmonyVoice = {
             label: parsed.label,
-            envelopes: webAudioFontPlayer.queueChord(audioContext, harmonyGain, preset, time, parsed.midi, 8, 0.38),
+            envelopes: player.queueChord(audioContext, harmonyGain, preset, time, parsed.midi, 8, 0.38),
           };
           return;
         }
@@ -819,76 +517,18 @@ import {
         harmonyVoice = { label: parsed.label, gain, oscillators, filter, synthParams };
       }
 
-      function makeNoise(duration) {
-        const sampleRate = audioContext.sampleRate;
-        const buffer = audioContext.createBuffer(1, Math.ceil(sampleRate * duration), sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        return source;
-      }
-
       function playDrum(trackKey, time, velocity = 1) {
         const scene = currentScene();
         const level = (scene.trackVolumes[trackKey] ?? 0.7) * (velocity >= 1 ? 1 : 0.28);
         const output = drumTrackGains?.[trackKey] || drumGain;
         const drumSound = drumSoundDefinition(state.sounds.drums[trackKey], trackKey);
-        const drumPreset = drumSound?.presetName ? webAudioFontPresets.get(drumSound.presetName) : null;
-        if (webAudioFontPlayer && drumPreset) {
-          webAudioFontPlayer.queueWaveTable(audioContext, output, drumPreset, time, drumSound.midi, 0.9, level);
+        const player = getWebAudioFontPlayer();
+        const drumPreset = drumSound?.presetName ? window[drumSound.presetName] : null;
+        if (player && drumPreset) {
+          player.queueWaveTable(audioContext, output, drumPreset, time, drumSound.midi, 0.9, level);
           return;
         }
-
-        if (trackKey === "kick") {
-          const osc = audioContext.createOscillator();
-          const gain = audioContext.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(200, time);
-          osc.frequency.exponentialRampToValueAtTime(50, time + 0.14);
-          gain.gain.setValueAtTime(0.9 * level, time);
-          gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.38);
-          osc.connect(gain).connect(output);
-          osc.start(time);
-          osc.stop(time + 0.4);
-          return;
-        }
-
-        if (trackKey === "snare") {
-          const noise = makeNoise(0.2);
-          const noiseFilter = audioContext.createBiquadFilter();
-          const noiseGain = audioContext.createGain();
-          noiseFilter.type = "highpass";
-          noiseFilter.frequency.setValueAtTime(900, time);
-          noiseGain.gain.setValueAtTime(0.55 * level, time);
-          noiseGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
-          noise.connect(noiseFilter).connect(noiseGain).connect(output);
-          noise.start(time);
-          noise.stop(time + 0.2);
-
-          const tone = audioContext.createOscillator();
-          const toneGain = audioContext.createGain();
-          tone.type = "triangle";
-          tone.frequency.setValueAtTime(180, time);
-          toneGain.gain.setValueAtTime(0.18 * level, time);
-          toneGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
-          tone.connect(toneGain).connect(output);
-          tone.start(time);
-          tone.stop(time + 0.13);
-          return;
-        }
-
-        const duration = trackKey === "openhat" ? 0.18 : 0.06;
-        const noise = makeNoise(duration);
-        const gain = audioContext.createGain();
-        const filter = audioContext.createBiquadFilter();
-        filter.type = "highpass";
-        filter.frequency.setValueAtTime(6000, time);
-        gain.gain.setValueAtTime((trackKey === "openhat" ? 0.18 : 0.24) * level, time);
-        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-        noise.connect(filter).connect(gain).connect(output);
-        noise.start(time);
-        noise.stop(time + duration);
+        playDrumInternal(audioContext, trackKey, output, time, level);
       }
 
       function bassMidiForOffset(offset) {
@@ -4788,7 +4428,7 @@ el.shareLink.addEventListener("click", () => {
         state.sounds.rhythm = Object.prototype.hasOwnProperty.call(SOUND_CATALOG, event.target.value) ? event.target.value : "internal";
         if (audioContext && state.sounds.rhythm !== "internal") {
           el.status.textContent = "Loading rhythm sound...";
-          await ensureWebAudioFontPreset(SOUND_CATALOG[state.sounds.rhythm]);
+          await loadSoundProfile(audioContext, state.sounds.rhythm, SOUND_CATALOG);
           if (!state.isPlaying) el.status.textContent = "Stopped";
         }
         savePreset();
@@ -4798,7 +4438,7 @@ el.shareLink.addEventListener("click", () => {
         state.sounds.harmony = Object.prototype.hasOwnProperty.call(SOUND_CATALOG, event.target.value) ? event.target.value : "internal";
         if (audioContext && state.sounds.harmony !== "internal") {
           el.status.textContent = "Loading harmony sound...";
-          await ensureWebAudioFontPreset(SOUND_CATALOG[state.sounds.harmony]);
+          await loadSoundProfile(audioContext, state.sounds.harmony, SOUND_CATALOG);
           if (!state.isPlaying) el.status.textContent = "Stopped";
         }
         releaseHarmony(audioContext?.currentTime || 0);
@@ -4811,7 +4451,7 @@ el.shareLink.addEventListener("click", () => {
           const drumSound = drumSoundDefinition(state.sounds.drums[track.key], track.key);
           if (audioContext && drumSound) {
             el.status.textContent = `Loading ${track.label} sound...`;
-            await ensureWebAudioFontPreset(drumSound);
+            await loadSoundProfile(audioContext, drumSound.presetName, { [drumSound.presetName]: drumSound });
             if (!state.isPlaying) el.status.textContent = "Stopped";
           }
           savePreset();
