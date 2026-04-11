@@ -104,7 +104,7 @@ describe("parser", () => {
   });
 
   it("extracts tags and arrangement references", () => {
-    expect(parse(`
+    const ast = parse(`
       # mix
 
         @A
@@ -117,31 +117,35 @@ describe("parser", () => {
       main: foo x4
 
       > main
-    `)).toEqual({
-      data: {
-        foo: [
-          { type: "chord", value: ["A4", "Db5", "E5"] },
-          { type: "chord", value: ["A4", "Db5", "E5"] },
-          { type: "chord", value: ["B4", "Eb5", "Gb5"] },
-          { type: "chord", value: ["A4", "Db5", "E5"] },
-        ],
-        main: [m("foo"), { type: "multiply", value: 4 }],
+    `);
+
+    expect(ast.data).toEqual({
+      foo: [
+        { type: "chord", value: ["A4", "Db5", "E5"] },
+        { type: "chord", value: ["A4", "Db5", "E5"] },
+        { type: "chord", value: ["B4", "Eb5", "Gb5"] },
+        { type: "chord", value: ["A4", "Db5", "E5"] },
+      ],
+      main: [m("foo"), { type: "multiply", value: 4 }],
+    });
+    expect(ast.main).toEqual([[m("main")]]);
+    expect(ast.tracks).toEqual({
+      mix: {
+        "A#1": [{
+          data: [t("c5")],
+          input: [p("x---"), p("----")],
+          values: [n(120)],
+        }],
+        "B#1": [{
+          data: [t("d5")],
+          input: [p("x---"), p("x---")],
+          values: [v(".")],
+        }],
       },
-      main: [[m("main")]],
-      tracks: {
-        mix: {
-          "A#1": [{
-            data: [t("c5")],
-            input: [p("x---"), p("----")],
-            values: [n(120)],
-          }],
-          "B#1": [{
-            data: [t("d5")],
-            input: [p("x---"), p("x---")],
-            values: [v(".")],
-          }],
-        },
-      },
+    });
+    expect(ast.sections).toEqual({
+      A: { inherits: null },
+      B: { inherits: null },
     });
   });
 
@@ -198,5 +202,35 @@ describe("parser", () => {
       [v("A"), v("B"), v("C"), v("C")],
       [v("A"), v("B"), v("A"), v("B")],
     ]);
+  });
+
+  it("preserves metadata and lyric chunks on sections", () => {
+    const ast = parse(`
+      ; tempo: 96
+      @VERSE
+      ; tempo: 72 (5/4)
+      ; Amazing grace how sweet
+      ; ~             ~
+      ; Am            F
+      # groove
+        @VERSE
+          #33 x---x--- C4 D4
+      > VERSE
+    `);
+
+    expect(ast.meta).toEqual({ tempo: 96 });
+    expect(ast.sections).toEqual({
+      VERSE: {
+        inherits: null,
+        tempo: 72,
+        meter: [5, 4],
+        steps: 40,
+        lyrics: [{
+          text: "Amazing grace how sweet",
+          anchors: [0, 14],
+          chords: ["Am", "F"],
+        }],
+      },
+    });
   });
 });

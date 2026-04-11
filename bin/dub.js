@@ -6,7 +6,7 @@ import process from "node:process";
 
 import { compressDub } from "../lib/compress.js";
 import { lintDub } from "../lib/lint.js";
-import { build, buildSplit, merge } from "../lib/mixup.js";
+import { build, buildSplit, merge, sequence } from "../lib/mixup.js";
 import { parse } from "../lib/parser.js";
 
 const USAGE = `Usage:
@@ -91,6 +91,54 @@ function splitTrackFilename(index, track) {
   const lane = sanitizeName(track.name);
   const suffix = Number.isFinite(track.program) ? `-${track.program}` : "";
   return `${String(index + 1).padStart(2, "0")}-${lane}${suffix}.mid`;
+}
+
+function mergeMetaChain(base, extra) {
+  const out = { ...(base || {}) };
+  if (!extra || typeof extra !== "object") return out;
+  Object.keys(extra).forEach((key) => {
+    if (typeof extra[key] !== "undefined") out[key] = extra[key];
+  });
+  return out;
+}
+
+function resolveSectionMeta(ast, sectionName, cache = new Map()) {
+  const key = sectionName || "__default__";
+  if (cache.has(key)) return cache.get(key);
+
+  const fileMeta = ast.meta || {};
+  const section = sectionName && ast.sections ? ast.sections[sectionName] : null;
+
+  let resolved = mergeMetaChain({}, fileMeta);
+  if (section && section.inherits) {
+    const parent = { ...resolveSectionMeta(ast, section.inherits, cache) };
+    delete parent.lyrics;
+    resolved = mergeMetaChain(resolved, parent);
+  }
+  if (section) {
+    const own = { ...section };
+    delete own.inherits;
+    resolved = mergeMetaChain(resolved, own);
+  }
+
+  cache.set(key, resolved);
+  return resolved;
+}
+
+function buildSceneInfo(ast, bpmOverride = null) {
+  const sceneSequence = sequence(ast);
+  const cache = new Map();
+
+  return sceneSequence.map((scene) => {
+    const meta = resolveSectionMeta(ast, scene.name, cache);
+    return {
+      name: scene.name,
+      tempo: meta.tempo ?? bpmOverride ?? 120,
+      meter: meta.meter ?? [4, 4],
+      steps: meta.steps ?? 32,
+      lyrics: Array.isArray(meta.lyrics) ? meta.lyrics : [],
+    };
+  });
 }
 
 function parseArgv(argv) {
@@ -203,13 +251,15 @@ function cmdCompress(options) {
 function buildMidiForSource(source, bpmOverride = null) {
   const ast = parse(source);
   const merged = merge(ast);
-  return build(merged, bpmOverride ?? 120);
+  const scenes = buildSceneInfo(ast, bpmOverride);
+  return build(merged, bpmOverride ?? 120, { scenes });
 }
 
 function buildSplitMidiForSource(source, bpmOverride = null) {
   const ast = parse(source);
   const merged = merge(ast);
-  return buildSplit(merged, bpmOverride ?? 120);
+  const scenes = buildSceneInfo(ast, bpmOverride);
+  return buildSplit(merged, bpmOverride ?? 120, { scenes });
 }
 
 function cmdExport(options) {

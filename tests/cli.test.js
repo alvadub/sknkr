@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { parseMidi } from "midi-file";
 
 const tempRoots = [];
 
@@ -39,6 +40,10 @@ function runCli(args, options = {}) {
 
 function text(output) {
   return Buffer.from(output).toString("utf8");
+}
+
+function decodeMidiFile(file) {
+  return parseMidi(Uint8Array.from(fs.readFileSync(file)));
 }
 
 afterEach(() => {
@@ -145,5 +150,38 @@ describe("dub cli", () => {
     expect(fs.existsSync(path.join(splitDir, "02-drums-2001.mid"))).toBe(true);
     expect(text(result.stdout)).toContain("01-lead-33.mid");
     expect(text(result.stdout)).toContain("02-drums-2001.mid");
+  });
+
+  it("exports tempo and lyric metadata through the CLI", () => {
+    const dir = makeTempDir();
+    const outDir = path.join(dir, "generated");
+    const file = path.join(dir, "song.dub");
+    fs.writeFileSync(file, `
+      ; tempo: 90
+      # lead
+        @VERSE
+        ; Amazing grace how sweet
+        ; ~             ~
+        ; Am            F
+          #33 x---x--- C4 D4
+        @CHORUS
+        ; tempo: 140 (3/4)
+        ; Sing now
+        ; ~
+        ; G
+          #33 x--- C5
+      > VERSE CHORUS
+    `);
+
+    const result = runCli(["export", "-o", outDir, file]);
+    expect(result.exitCode).toBe(0);
+
+    const parsed = decodeMidiFile(path.join(outDir, "song.mid"));
+    const metaTrack = parsed.tracks[0];
+    const lyricTexts = metaTrack.filter((event) => event.type === "lyrics").map((event) => event.text);
+    const tempoEvents = metaTrack.filter((event) => event.type === "setTempo");
+
+    expect(tempoEvents).toHaveLength(2);
+    expect(lyricTexts).toEqual(["Amazing grace how sweet", "Am", "F", "Sing now", "G"]);
   });
 });
