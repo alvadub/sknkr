@@ -331,6 +331,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           bass: scene.bass.filter((event) => bassEventStep(event) === stepIndex).map((event) => ({
             note: event.midi,
             tick: event.tick,
+            length: event.length,
           })),
         };
       }
@@ -508,7 +509,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           envelope.gain.cancelScheduledValues(time);
           envelope.gain.setTargetAtTime(0.0001, time, state.bass.release);
         });
-        voice.oscillators.forEach((osc) => osc.stop(time + state.bass.release * 4 + 0.1));
+        voice.oscillators.forEach((osc) => osc.stop(time + state.bass.release + 0.1));
       }
 
       function releaseAllBassNotes() {
@@ -521,7 +522,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
         const filter = audioContext.createBiquadFilter();
         filter.type = "lowpass";
         filter.frequency.setValueAtTime(state.bass.filter, time);
-        filter.Q.setValueAtTime(1, time);
+        filter.Q.setValueAtTime(5, time);
         destination.connect(filter).connect(audioRuntime.graph.bassGain);
 
         const voices = state.bass.layers.map((layer) => {
@@ -542,7 +543,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           osc.start(time);
           if (releaseAt !== null) {
             envelope.gain.setTargetAtTime(0.0001, releaseAt, state.bass.release);
-            osc.stop(releaseAt + state.bass.release * 4 + 0.1);
+            osc.stop(releaseAt + state.bass.release + 0.1);
           }
           return { osc, envelope };
         });
