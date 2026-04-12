@@ -82,6 +82,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
       const state = {
         bpm: 100,
         uiMode: "edit",
+        textMode: localStorage.getItem("skanker-text-mode") === "true",
         songTitle: "SKNKR",
         songNote: "Live dub sketch for groove, chords, and arrangement review.",
         currentScene: 0,
@@ -145,6 +146,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
 
       const el = {
         status: document.getElementById("status"),
+        textModeToggle: document.getElementById("text-mode-toggle"),
         modeListen: document.getElementById("mode-listen"),
         modeEdit: document.getElementById("mode-edit"),
         pasteDialog: document.getElementById("paste-dialog"),
@@ -3716,6 +3718,12 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
       el.stop.addEventListener("click", () => stopPlayback());
       el.modeListen.addEventListener("click", () => setUiMode("listen"));
       el.modeEdit.addEventListener("click", () => setUiMode("edit"));
+      el.textModeToggle.addEventListener("click", () => {
+        state.textMode = !state.textMode;
+        localStorage.setItem("skanker-text-mode", state.textMode);
+        document.body.classList.toggle("mode-text", state.textMode);
+        el.textModeToggle.classList.toggle("active", state.textMode);
+      });
       el.mixerOpen.addEventListener("click", openMixer);
       el.mixerClose.addEventListener("click", closeMixer);
       el.mixerDialog.addEventListener("close", renderShell);
@@ -4000,4 +4008,6 @@ el.shareLink.addEventListener("click", () => {
       loadPreset();
       if (!applySharedStateFromUrlV2()) applySharedStateFromUrl();
       applyUrlPresetIdentity();
+      document.body.classList.toggle("mode-text", state.textMode);
+      el.textModeToggle.classList.toggle("active", state.textMode);
       renderAll();

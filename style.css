@@ -1760,3 +1760,57 @@
           margin-top: 0;
         }
       }
+
+      /* Text mode - hide visual surfaces, show only inputs */
+      body.mode-text .track-surface {
+        display: none;
+      }
+
+      body.mode-text .chord-grid-row {
+        display: none;
+      }
+
+      body.mode-text .drum-row,
+      body.mode-text .bass-row {
+        grid-template-columns: 1fr;
+      }
+
+      body.mode-text .track-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      body.mode-text .drum-inline-editor,
+      body.mode-text .bass-inline-editor {
+        padding-top: 0;
+      }
+
+      body.mode-text .chord-inline-part-editor {
+        padding-top: 0;
+      }
+
+      #text-mode-toggle {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      #text-mode-toggle:hover {
+        background: var(--line);
+        color: var(--text);
+      }
+
+      #text-mode-toggle.active {
+        background: var(--rhythm);
+        color: var(--bg);
+        border-color: var(--rhythm);
+      }
