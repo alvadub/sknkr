@@ -38,7 +38,7 @@ import { getInternalSynthParams, playInternalChord, playDrumInternal } from "./l
 import { createAudioGraph } from "./lib/audio-graph.js";
 import { getWebAudioFontPlayer, loadSoundProfile } from "./lib/audio-loader.js";
 import { AudioRuntime } from "./lib/audio-runtime.js";
-import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSymbolGroups, parseDrumPattern, formatDrumPattern, renderDrumPatternPreview, renderChordPatternPreview, renderChordPoolPreview, chordLayerPartValues, formatChordPatternPart, formatChordPoolPart, chordActivePoolIndex, parseChordPool, chordPatternToSlots, normalizeDubPatternSymbol, dubPatternChars, parseDubPatternCells, reconcilePastePattern, parseBassInlinePattern, parseChordInlinePattern, isDubPatternToken, normalizeChordPoolText, parseDubBassSymbols, dubSceneLabel, dubLineComment, dubMetaValue, dubMetaMap, formatDubChordLayer, formatDubBassPattern, orderedUnique, dubDrumTrackKey, soundLabel, drumSoundLabel, bassPresetLabel, summarizeChordLayer, summarizeDrumTrack, summarizeBassEvents, summarizeScene as summarizeSceneFn } from "./lib/ui-widgets.js";
+import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSymbolGroups, parseDrumPattern, formatDrumPattern, renderDrumPatternPreview, renderChordPatternPreview, renderChordPoolPreview, chordLayerPartValues, formatChordPatternPart, formatChordPoolPart, chordActivePoolIndex, parseChordPool, chordPatternToSlots, normalizeDubPatternSymbol, dubPatternChars, parseDubPatternCells, reconcilePastePattern, parseBassInlinePattern, parseChordInlinePattern, isDubPatternToken, normalizeChordPoolText, parseDubBassSymbols, dubSceneLabel, dubLineComment, dubMetaValue, dubMetaMap, formatDubChordLayer, formatDubBassPattern, orderedUnique, dubDrumTrackKey, soundLabel, drumSoundLabel, bassPresetLabel, summarizeChordLayer, summarizeDrumTrack, summarizeBassEvents, summarizeScene as summarizeSceneFn, parseDubChannelLine, parseDubArrangement } from "./lib/ui-widgets.js";
 
       const LOOP_STEPS = STEPS;
       const INITIAL_SCENE_COUNT = 4;
@@ -1150,56 +1150,6 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           if (cell[0] === "x") return 0.72;
           return 0;
         });
-      }
-
-      function parseDubChannelLine(line) {
-        const parts = line.trim().split(/\s+/).filter(Boolean);
-        const instrument = parts.shift()?.slice(1).toLowerCase();
-        if (!instrument) return null;
-        if (parts[0] === "+" || parts[0] === "!") parts.shift();
-        const volume = Number(parts[0]);
-        if (Number.isFinite(volume)) parts.shift();
-        const patternParts = [];
-        while (parts.length && isDubPatternToken(parts[0])) patternParts.push(parts.shift());
-        if (!patternParts.length) return null;
-        return { instrument, volume, pattern: patternParts.join(" "), notes: parts.join(" ") };
-      }
-
-      function dubDrumTrackKey(instrument) {
-        const aliases = {
-          bd: "kick",
-          bassdrum: "kick",
-          sd: "snare",
-          ch: "hihat",
-          hh: "hihat",
-          closedhat: "hihat",
-          closedhh: "hihat",
-          oh: "openhat",
-          openhh: "openhat",
-        };
-        return aliases[instrument] || instrument;
-      }
-
-      function parseDubArrangement(rawArrangement) {
-        const tokens = String(rawArrangement || "").trim().split(/\s+/).filter(Boolean);
-        const expanded = [];
-        tokens.forEach((token) => {
-          const repeat = token.match(/^x(\d+)$/i);
-          if (repeat) {
-            const previous = expanded[expanded.length - 1];
-            if (!previous) return;
-            const count = Math.max(1, Number(repeat[1]) || 1);
-            for (let index = 1; index < count; index += 1) expanded.push(previous);
-            return;
-          }
-          if (token === "%") {
-            const previous = expanded[expanded.length - 1];
-            if (previous) expanded.push(previous);
-            return;
-          }
-          expanded.push(token.replace(/^@/, ""));
-        });
-        return expanded;
       }
 
       function applyDubChannel(scene, channel) {
