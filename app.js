@@ -38,7 +38,7 @@ import { getInternalSynthParams, playInternalChord, playDrumInternal } from "./l
 import { createAudioGraph } from "./lib/audio-graph.js";
 import { getWebAudioFontPlayer, loadSoundProfile } from "./lib/audio-loader.js";
 import { AudioRuntime } from "./lib/audio-runtime.js";
-import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSymbolGroups, parseDrumPattern, formatDrumPattern, renderDrumPatternPreview, renderChordPatternPreview, renderChordPoolPreview, chordLayerPartValues, formatChordPatternPart, formatChordPoolPart, chordActivePoolIndex, parseChordPool, chordPatternToSlots } from "./lib/ui-widgets.js";
+import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSymbolGroups, parseDrumPattern, formatDrumPattern, renderDrumPatternPreview, renderChordPatternPreview, renderChordPoolPreview, chordLayerPartValues, formatChordPatternPart, formatChordPoolPart, chordActivePoolIndex, parseChordPool, chordPatternToSlots, normalizeDubPatternSymbol, dubPatternChars, parseDubPatternCells } from "./lib/ui-widgets.js";
 
       const LOOP_STEPS = STEPS;
       const INITIAL_SCENE_COUNT = 4;
@@ -1243,49 +1243,6 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
 
       function isDubPatternToken(token) {
         return /^[xX_\-.0\[\]]+$/.test(token);
-      }
-
-      function normalizeDubPatternSymbol(symbol) {
-        if (symbol === "." || symbol === "0") return "-";
-        return symbol;
-      }
-
-      function dubPatternChars(raw) {
-        return [...String(raw || "").replace(/[\s|]/g, "")]
-          .map(normalizeDubPatternSymbol)
-          .filter((symbol) => ["x", "X", "_", "-"].includes(symbol));
-      }
-
-      function parseDubPatternCells(rawPattern, stepCount, ticksPerStep = 1) {
-        const raw = String(rawPattern || "").replace(/[\s|]/g, "").replace(/([xX_\-])!(\d+)/g, (_, ch, n) => ch.repeat(1 + Number(n)));
-        if (!raw) return Array.from({ length: stepCount }, () => Array(ticksPerStep).fill("-"));
-        const cells = [];
-        for (let index = 0; index < raw.length; index += 1) {
-          const char = normalizeDubPatternSymbol(raw[index]);
-          if (char === "[") {
-            const closeIndex = raw.indexOf("]", index + 1);
-            if (closeIndex === -1) return null;
-            const group = dubPatternChars(raw.slice(index + 1, closeIndex));
-            if (!group.length) return null;
-            const cell = Array(ticksPerStep).fill("-");
-            if (ticksPerStep === 1) {
-              cell[0] = group.includes("X") ? "X" : (group.includes("x") ? "x" : (group.includes("_") ? "_" : "-"));
-            } else {
-              group.slice(0, ticksPerStep).forEach((symbol, tick) => {
-                cell[tick] = symbol;
-              });
-            }
-            cells.push(cell);
-            index = closeIndex;
-            continue;
-          }
-          if (char === "]") return null;
-          if (!["x", "X", "_", "-"].includes(char)) return null;
-          cells.push([char, ...Array(Math.max(0, ticksPerStep - 1)).fill("-")]);
-        }
-        if (cells.length > stepCount) return null;
-        while (cells.length < stepCount) cells.push(Array(ticksPerStep).fill("-"));
-        return cells;
       }
 
       function parseDubBassSymbols(rawPattern) {
