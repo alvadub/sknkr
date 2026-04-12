@@ -38,7 +38,7 @@ import { getInternalSynthParams, playInternalChord, playDrumInternal } from "./l
 import { createAudioGraph } from "./lib/audio-graph.js";
 import { getWebAudioFontPlayer, loadSoundProfile } from "./lib/audio-loader.js";
 import { AudioRuntime } from "./lib/audio-runtime.js";
-import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSymbolGroups, parseDrumPattern, formatDrumPattern, renderDrumPatternPreview, renderChordPatternPreview, renderChordPoolPreview, chordLayerPartValues, formatChordPatternPart, formatChordPoolPart, chordActivePoolIndex, parseChordPool, chordPatternToSlots, normalizeDubPatternSymbol, dubPatternChars, parseDubPatternCells } from "./lib/ui-widgets.js";
+import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSymbolGroups, parseDrumPattern, formatDrumPattern, renderDrumPatternPreview, renderChordPatternPreview, renderChordPoolPreview, chordLayerPartValues, formatChordPatternPart, formatChordPoolPart, chordActivePoolIndex, parseChordPool, chordPatternToSlots, normalizeDubPatternSymbol, dubPatternChars, parseDubPatternCells, reconcilePastePattern, parseBassInlinePattern, parseChordInlinePattern, isDubPatternToken, normalizeChordPoolText, parseDubBassSymbols } from "./lib/ui-widgets.js";
 
       const LOOP_STEPS = STEPS;
       const INITIAL_SCENE_COUNT = 4;
@@ -837,14 +837,6 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
         }).join("");
       }
 
-      function normalizeChordPoolText(rawChords) {
-        return splitWhitespacePreservingParts(rawChords).map((part) => {
-          if (/^\s+$/.test(part)) return part;
-          const chord = parseChord(part);
-          return chord ? chord.label : part;
-        }).join("").trimEnd();
-      }
-
       function formatBassPatternPart(events, partIndex) {
         const tickOffset = partIndex * BASS_EDITOR_PART_TICKS;
         const symbols = Array(BASS_EDITOR_PART_TICKS).fill("-");
@@ -1241,27 +1233,6 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
         return cuts.length ? line.slice(0, Math.min(...cuts)) : line;
       }
 
-      function isDubPatternToken(token) {
-        return /^[xX_\-.0\[\]]+$/.test(token);
-      }
-
-      function parseDubBassSymbols(rawPattern) {
-        const raw = String(rawPattern || "").replace(/[\s|]/g, "");
-        if (!raw) return Array(BASS_TICKS).fill("-");
-        if (raw.includes("[") || raw.includes("]")) {
-          const cells = parseDubPatternCells(rawPattern, STEPS, BASS_TICKS_PER_STEP);
-          return cells ? cells.flat().slice(0, BASS_TICKS) : null;
-        }
-        const symbols = dubPatternChars(raw);
-        if (symbols.length > BASS_TICKS) return null;
-        if (symbols.length <= STEPS) {
-          return symbols.flatMap((symbol) => [symbol, ...Array(BASS_TICKS_PER_STEP - 1).fill("-")])
-            .concat(Array(BASS_TICKS).fill("-"))
-            .slice(0, BASS_TICKS);
-        }
-        return symbols.concat(Array(BASS_TICKS).fill("-")).slice(0, BASS_TICKS);
-      }
-
       function bassDubLineToEvents(pattern, notesText) {
         const notes = parseBassNotes(notesText);
         const symbols = parseDubBassSymbols(pattern);
@@ -1472,31 +1443,6 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
         const hasBare = lines.some((l) => /^[a-z][a-z0-9_]*\s*:/i.test(l));
         if (hasBare) return "bare";
         return "dub";
-      }
-
-      function reconcilePastePattern(raw, steps) {
-        if (!raw || !raw.length) return "-".repeat(steps);
-        if (raw.length === steps) return raw;
-        if (raw.length < steps) return raw.repeat(Math.ceil(steps / raw.length)).slice(0, steps);
-        return raw.slice(0, steps);
-      }
-
-      function parseBassInlinePattern(content) {
-        const raw = content.replace(/\s/g, "");
-        const noteRe = /([A-Ga-g][#b]?\d)/g;
-        const notes = [];
-        const pat = raw.replace(noteRe, (note) => { notes.push(note); return "x"; })
-          .replace(/_/g, "_").replace(/-/g, "-");
-        return { pat: reconcilePastePattern(pat, STEPS * BASS_TICKS_PER_STEP), notes };
-      }
-
-      function parseChordInlinePattern(content) {
-        const raw = content.replace(/\s/g, "");
-        const chordRe = /([A-G][#b]?(?:maj|min|m|aug|dim|sus|add)?[0-9]*(?:b[0-9]+|#[0-9]+)?)/g;
-        const chords = [];
-        const pat = raw.replace(chordRe, (chord) => { chords.push(chord); return "x"; })
-          .replace(/_/g, "_").replace(/-/g, "-");
-        return { pat: reconcilePastePattern(pat, CHORD_STEPS), chords };
       }
 
       function parseBareBlocksToDub(text) {
