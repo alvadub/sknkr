@@ -916,7 +916,7 @@
 
       .track-head {
         display: grid;
-        grid-template-columns: 4.5rem minmax(18rem, 1fr) minmax(13.5rem, max-content);
+        grid-template-columns: 4.5rem 1fr auto;
         gap: 0.5rem;
         align-items: center;
         border: 1px solid var(--line);
@@ -974,7 +974,6 @@
         align-items: center;
         justify-content: flex-end;
         gap: 0.35rem;
-        min-width: 10.5rem;
       }
 
       .icon-button {
