@@ -1841,6 +1841,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           tab.classList.toggle("pending", index === state.pendingScene);
           tab.addEventListener("click", () => selectScene(index));
           tab.addEventListener("dblclick", () => {
+            if (state.uiMode !== "edit") return;
             const input = document.createElement("input");
             input.type = "text";
             input.value = scene.name;
