@@ -335,10 +335,12 @@ import { AudioRuntime } from "./lib/audio-runtime.js";
           swing: 0,
           lookahead: 0.1,
           tickInterval: 0.025,
+          stepCount: CHORD_STEPS,
           onStep: handleRuntimeStep,
         });
         audioRuntime.graph.connect(audioContext.destination);
         audioRuntime.sounds = { ...state.sounds };
+        audioRuntime.strumLength = state.strumLength;
         audioRuntime.kit = state.sounds.drums.kick || "internal";
         audioRuntime.volumes = { ...state.volumes };
         audioRuntime.bassParams = { ...state.bass };
@@ -358,14 +360,11 @@ import { AudioRuntime } from "./lib/audio-runtime.js";
         if (!scene) return null;
         const drumStep = stepIndex % DRUM_STEPS;
         const bassStep = stepIndex % STEPS;
-        const previousHarmonyChord = scene.harmony[(stepIndex - 1 + CHORD_STEPS) % CHORD_STEPS];
-        const harmonyChord = scene.harmony[stepIndex];
-        const harmonyStarts = Boolean(harmonyChord) && String(harmonyChord).trim() !== String(previousHarmonyChord || "").trim();
-        const harmonyStops = !String(harmonyChord || "").trim() && String(previousHarmonyChord || "").trim();
+        const rawChord = String(scene.harmony[stepIndex] || "").trim();
 
         return {
           rhythm: scene.rhythm[stepIndex] ? [scene.rhythm[stepIndex]] : null,
-          harmony: (harmonyStarts || (stepIndex === 0 && harmonyChord)) ? harmonyChord : (harmonyStops || (stepIndex === 0 && !harmonyChord)) ? null : undefined,
+          harmony: rawChord || null,
           drums: TRACKS.map((track) => ({
             trackKey: track.key,
             velocity: normalizeDrumValue(scene.drums[track.key][drumStep]),
@@ -479,6 +478,10 @@ import { AudioRuntime } from "./lib/audio-runtime.js";
       }
 
       function releaseHarmony(time) {
+        if (audioRuntime) {
+          audioRuntime.releaseHarmony(time);
+          return;
+        }
         if (!harmonyVoice) return;
         if (harmonyVoice.envelopes) {
           harmonyVoice.envelopes.forEach((envelope) => {
@@ -3190,7 +3193,7 @@ import { AudioRuntime } from "./lib/audio-runtime.js";
             render: (preview, value) => renderChordPatternPreview(preview, value, stepOffset),
             parse: (value) => parseChordPattern(value, CHORD_EDITOR_PART_STEPS),
             format: chordPatternSymbolGroups,
-            cycle: (s) => s === "-" ? "x" : s === "x" ? "X" : "-",
+            cycle: (s) => s === "_" ? "_" : s === "-" ? "x" : s === "x" ? "X" : "-",
             onToggle: () => { syncEditor(); savePreset(); },
           });
           poolInput.addEventListener("input", syncEditor);
@@ -3602,7 +3605,7 @@ import { AudioRuntime } from "./lib/audio-runtime.js";
             render: (preview, value) => renderChordPatternPreview(preview, value, stepOffset),
             parse: (value) => parseChordPattern(value, CHORD_EDITOR_PART_STEPS),
             format: chordPatternSymbolGroups,
-            cycle: (s) => s === "-" ? "x" : s === "x" ? "X" : "-",
+            cycle: (s) => s === "_" ? "_" : s === "-" ? "x" : s === "x" ? "X" : "-",
             onToggle: () => { syncEditor(); savePreset(); },
           });
           poolInput.addEventListener("input", syncEditor);
@@ -4485,6 +4488,7 @@ el.shareLink.addEventListener("click", () => {
       el.bpmUp.addEventListener("click", () => setBpm(state.bpm + 1));
       el.strum.addEventListener("input", (event) => {
         state.strumLength = Number(event.target.value);
+        if (audioRuntime) audioRuntime.strumLength = state.strumLength;
         savePreset();
       });
       el.padAttack.addEventListener("input", (event) => {
@@ -4546,6 +4550,7 @@ el.shareLink.addEventListener("click", () => {
           if (!state.isPlaying) el.status.textContent = "Stopped";
         }
         savePreset();
+        if (audioRuntime) audioRuntime.sounds.rhythm = state.sounds.rhythm;
         renderAll();
       });
       el.harmonySound.addEventListener("change", async (event) => {
@@ -4556,6 +4561,9 @@ el.shareLink.addEventListener("click", () => {
           if (!state.isPlaying) el.status.textContent = "Stopped";
         }
         releaseHarmony(audioContext?.currentTime || 0);
+        if (audioRuntime) {
+          audioRuntime.sounds.harmony = state.sounds.harmony;
+        }
         savePreset();
         renderAll();
       });
@@ -4568,6 +4576,7 @@ el.shareLink.addEventListener("click", () => {
             await loadSoundProfile(audioContext, drumSound.presetName, { [drumSound.presetName]: drumSound });
             if (!state.isPlaying) el.status.textContent = "Stopped";
           }
+          if (audioRuntime) audioRuntime.sounds.drums[track.key] = state.sounds.drums[track.key];
           savePreset();
           renderAll();
         });
