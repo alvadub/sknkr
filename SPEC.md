@@ -759,14 +759,14 @@ All instruments use the same pattern syntax:
 
 Instruments fall into two categories based on how they handle sustain:
 
-| Type | Behavior | Examples |
-|------|----------|----------|
-| **Sustained** | `_` extends note, `-` releases | bass, pads, strings, organ, synth leads |
-| **Percussive** | `_` and `-` both = rest (no sustain) | drums, piano (rhythm), plucks |
+| Type | `_` behavior | `-` behavior | Examples |
+|------|--------------|--------------|----------|
+| **Sustained** | actively extend note | release | bass, pads, strings, organ, synth leads |
+| **Percussive** | let ring (no mute) | mute/cut | drums, guitar, piano, plucks |
 
-**Sustained instruments** honor the full pattern: `x___` plays a note that rings for 4 ticks/steps.
+**Sustained instruments:** `x___` plays a note that actively rings for 4 ticks/steps. `-` releases the note.
 
-**Percussive instruments** treat `_` as `-` — notes are one-shot and don't extend. The pattern still controls timing, but sustain is ignored.
+**Percussive instruments:** `x___` plays a note and lets it decay naturally. `-` mutes/cuts the sound early. Both types honor `_` vs `-` — the difference is whether the sound is actively sustained or naturally decaying.
 
 ### 13.3 Bass pattern behavior (sustained)
 
@@ -804,12 +804,15 @@ Example: `x___ ---- x--- ----`
 
 ### 13.5 Rhythm pattern behavior (percussive)
 
-Rhythm patterns operate at step resolution. Notes are one-shot — `_` is treated as `-`.
+Rhythm patterns operate at step resolution. `_` lets notes ring, `-` mutes them.
 
-Example: `x--- x--- x--- x---`
-- Each `x` triggers a strum/pluck
-- Notes decay naturally (no explicit sustain)
-- Pattern controls timing only
+Example: `x___ x--- x--- x---`
+- Step 0: strum/pluck, let ring through steps 1-3
+- Step 4: strum, mute at step 5
+- Step 8: strum, mute at step 9
+- Step 12: strum, mute at step 13
+
+For guitar/piano, this models palm muting vs open strumming. `-` cuts the decay short; `_` lets it ring.
 
 ### 13.6 Implementation details
 
