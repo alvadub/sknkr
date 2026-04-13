@@ -260,13 +260,23 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           for (let step = 2; step < DRUM_STEPS; step += 4) scene.drums.hihat[step] = 1;
           [15, 31].forEach((step) => scene.drums.openhat[step] = 1);
           scene.bass = [
-            {tick: 0, midi: 36, length: 8},
-            {tick: 16, midi: 36, length: 8},
+            {tick: 0, midi: 36, length: 4},
+            {tick: 4, midi: 36, length: 4},
+            {tick: 8, midi: 36, length: 4},
+            {tick: 12, midi: 36, length: 4},
             {tick: 32, midi: 41, length: 16},
             {tick: 64, midi: 43, length: 8},
             {tick: 80, midi: 43, length: 8},
             {tick: 96, midi: 38, length: 16},
           ];
+          scene.bassText = {
+            notes: "c2 c2 c2 c2 f2 g2 d2",
+            pattern: "[xxxx]---- ---- ---- x___ ---- x--- ---- ---x ---- --x- ---- ---x ---- ---x ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ",
+          };
+          scene.chordPatternText = {
+            rhythm: ["[x-x-]---- [x-x-]----", "[x-x-]---- [x-x-]----"],
+            harmony: ["x___ ____ [x_]__ ____", "x___ ____ ____ ____"],
+          };
         }
 
         scene.chordPoolText = {
