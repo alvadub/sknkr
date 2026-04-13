@@ -735,10 +735,79 @@ tests/
 | 2026-04-10 | Precedence chain: section meta → file-level meta → caller context → hard default (120, 4/4). `parse()` does not resolve the chain — caller does. |
 | 2026-04-10 | Scene token `t` part encodes per-scene tempo/meter: `t72`, `t72/5/4`, or `t/5/4`. BPM and meter both optional — at least one present. Consistent with header `t` prefix. Backward-compatible. |
 | 2026-04-10 | Meter denominator must be a power of 2 — `D ∈ {2, 4, 8, 16}`. Non-standard denominators (3, 6, etc.) are a lint error. Guarantees integer step counts. |
+| 2026-04-12 | Harmony sustain is pattern-controlled, not value-comparison-based. Pattern symbols: `x` = play chord, `_` = sustain (let ring), `-` = release. Consistent with bass pattern behavior. |
+| 2026-04-12 | `formatBassPattern()` includes `_` for sustained ticks, not just `x` for note starts. Pattern reflects actual note lengths. |
+| 2026-04-12 | Validation feedback: invalid inputs show red border-bottom, stats text turns red, preview overlay text turns red, `.on` spans in preview turn red. Visual consistency across bass and chord editors. |
 
 ---
 
-## 13. Metadata System (in exploration)
+## 13. Pattern System: Bass and Harmony
+
+### 13.1 Pattern symbols
+
+Both bass and harmony use the same pattern syntax:
+
+| Symbol | Meaning |
+|--------|---------|
+| `x` | hit (note/chord on) |
+| `X` | accent (higher velocity) |
+| `_` | sustain (extend previous note/chord) |
+| `-` | rest (release/silence) |
+
+### 13.2 Bass pattern behavior
+
+Bass patterns operate at tick resolution (128 ticks per loop, 4 ticks per step). The pattern controls:
+
+- When notes start (`x` or `X`)
+- When notes sustain (`_`)
+- When notes end (`-` or next `x`)
+
+Example: `x___ ---- x--- ----`
+- Tick 0: start note
+- Ticks 1-3: sustain note
+- Ticks 4-15: rest
+- Tick 16: start note
+- Ticks 17-31: rest
+
+The `formatBassPattern()` function generates patterns from bass events, including `_` for sustained ticks.
+
+### 13.3 Harmony pattern behavior
+
+Harmony patterns operate at step resolution (32 steps per loop). The pattern controls:
+
+- When chords play (`x` or `X`)
+- When chords sustain (`_`) — chord continues ringing
+- When chords release (`-`) — silence
+
+Example: `x___ ---- x--- ----`
+- Step 0: play chord
+- Steps 1-3: sustain (chord rings)
+- Steps 4-7: release (silence)
+- Step 8: play chord
+- Steps 9-15: release
+
+**Key difference from old behavior:** Previously, harmony sustained automatically until the next chord or empty slot. Now, `_` explicitly controls sustain length, and `-` explicitly releases.
+
+### 13.4 Implementation details
+
+**Step resolver (`stepResolver` in `app.js`):**
+- Returns `null` for `-` → triggers `releaseHarmony()`
+- Returns `"_"` for `_` → sustain (no play, no release)
+- Returns chord value for `x` → triggers `playHarmony()`
+
+**Audio runtime (`lib/audio-runtime.js`):**
+- `playHarmony("_")` returns early (no-op)
+- `harmony === null` triggers release
+- Any other value triggers play
+
+**Pattern tracking:**
+- `harmonyWasActive` flag tracks if a chord is currently ringing
+- Reset on stop, pause, and scene change
+- Used to handle `_` at pattern start (plays chord if nothing was active)
+
+---
+
+## 14. Metadata System (in exploration)
 
 **Status:** Design in progress. Syntax settled; scope and semantics not yet.
 
