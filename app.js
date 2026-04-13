@@ -372,10 +372,15 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
         return {
           rhythm: scene.rhythm[stepIndex] ? [scene.rhythm[stepIndex]] : null,
           harmony,
-          drums: TRACKS.map((track) => ({
-            trackKey: track.key,
-            velocity: normalizeDrumValue(scene.drums?.[track.key]?.[drumStep] ?? 0),
-          })).filter((d) => d.velocity > 0),
+          drums: TRACKS.flatMap((track) => {
+            const stepData = scene.drums?.[track.key]?.[drumStep];
+            if (!stepData) return [];
+            return stepData.map((hit) => ({
+              trackKey: track.key,
+              velocity: hit.vel,
+              offset: hit.pos,
+            }));
+          }),
           bass: scene.bass.filter((event) => bassEventStep(event) === stepIndex).map((event) => ({
             note: event.midi + state.bass.transpose,
             tick: event.tick,
@@ -706,8 +711,12 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           playScheduledBassNote(event, time + tickOffset * tickDuration);
         });
         TRACKS.forEach((track) => {
-          const velocity = normalizeDrumValue(scene.drums[track.key][drumStep]);
-          if (velocity > 0) playDrum(track.key, time, velocity);
+          const stepData = scene.drums[track.key][drumStep];
+          if (!stepData) return;
+          const stepDuration = 60 / state.bpm / 4;
+          stepData.forEach((hit) => {
+            playDrum(track.key, time + hit.pos * stepDuration, hit.vel);
+          });
         });
         window.setTimeout(() => {
           if (!state.isPlaying) return;
@@ -2785,20 +2794,22 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
         }
       }
 
-      function renderDrumLaneRoll(roll, values, trackKey) {
+      function renderDrumLaneRoll(roll, steps, trackKey) {
         if (!roll) return;
-        const pattern = drumLengthArray(values).map(normalizeDrumValue);
         roll.replaceChildren();
-        pattern.forEach((value, step) => {
-          if (value <= 0) return;
-          const pulse = document.createElement("span");
-          pulse.className = "drum-roll-pulse";
-          pulse.style.left = `${(step / DRUM_STEPS) * 100}%`;
-          pulse.style.width = `${Math.max(1.2, 100 / DRUM_STEPS - 0.25)}%`;
-          pulse.style.height = `${value >= 0.95 ? 58 : 36}%`;
-          pulse.style.opacity = value >= 0.95 ? "1" : "0.8";
-          pulse.dataset.track = trackKey;
-          roll.append(pulse);
+        steps.forEach((stepData, step) => {
+          if (!stepData) return;
+          stepData.forEach((hit) => {
+            const pulse = document.createElement("span");
+            pulse.className = "drum-roll-pulse";
+            const pos = (step + hit.pos) / DRUM_STEPS;
+            pulse.style.left = `${pos * 100}%`;
+            pulse.style.width = `${Math.max(1.2, 100 / DRUM_STEPS - 0.25)}%`;
+            pulse.style.height = `${hit.vel >= 0.95 ? 58 : 36}%`;
+            pulse.style.opacity = hit.vel >= 0.95 ? "1" : "0.8";
+            pulse.dataset.track = trackKey;
+            roll.append(pulse);
+          });
         });
         if (state.playhead >= 0) {
           const playhead = document.createElement("span");
