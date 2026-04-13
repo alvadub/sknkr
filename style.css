@@ -1518,6 +1518,11 @@
         padding: 0 0.1rem;
       }
 
+      .bass-text-preview .substep-group .bracket {
+        color: var(--muted);
+        opacity: 0.6;
+      }
+
       .bass-text-preview .substep-group span {
         margin: 0 -0.05rem;
       }

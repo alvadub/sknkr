@@ -2911,6 +2911,10 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
             if (item.substep) {
               const group = document.createElement("span");
               group.className = "substep-group";
+              const openBracket = document.createElement("span");
+              openBracket.textContent = "[";
+              openBracket.className = "bracket";
+              group.append(openBracket);
               item.substep.forEach((ch) => {
                 const cell = document.createElement("span");
                 cell.textContent = ch;
@@ -2928,6 +2932,10 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
                 group.append(cell);
                 tick += 1;
               });
+              const closeBracket = document.createElement("span");
+              closeBracket.textContent = "]";
+              closeBracket.className = "bracket";
+              group.append(closeBracket);
               preview.append(group);
               return;
             }
