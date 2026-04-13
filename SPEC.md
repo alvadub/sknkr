@@ -738,6 +738,9 @@ tests/
 | 2026-04-12 | Harmony sustain is pattern-controlled, not value-comparison-based. Pattern symbols: `x` = play chord, `_` = sustain (let ring), `-` = release. Consistent with bass pattern behavior. |
 | 2026-04-12 | `formatBassPattern()` includes `_` for sustained ticks, not just `x` for note starts. Pattern reflects actual note lengths. |
 | 2026-04-12 | Validation feedback: invalid inputs show red border-bottom, stats text turns red, preview overlay text turns red, `.on` spans in preview turn red. Visual consistency across bass and chord editors. |
+| 2026-04-13 | Subdivision system added. Metadata syntax extended: `; tempo: 120 (5/4) 4n` — BPM, meter, and subdivision all optional, at least one required. Subdivision controls step duration per lane. |
+| 2026-04-13 | Default subdivisions per lane: drums `8n`, rhythm/harmony `4n`, bass `16n`. Valid subdivisions: `1n`, `2n`, `4n`, `4t`, `8n`, `8t`, `16n`, `16t`, `32n`. |
+| 2026-04-13 | `parsePatternWithSubdiv()` returns structured pattern data with subdivision-aware timing. `patternStepToHits()` converts parsed steps to hit arrays. |
 
 ---
 
@@ -866,16 +869,42 @@ Detection regex: `/^;\s*[\w][\w-]*:\s*.+/`
 
 Key names: lowercase, may contain hyphens. Values are freeform strings — parsers coerce them as needed per key.
 
-`tempo` is the only key that carries timing. Meter is its optional inline suffix — no standalone `meter:` key exists.
+`tempo` is the only key that carries timing. Meter and subdivision are its optional inline suffixes — no standalone `meter:` or `subdiv:` keys exist.
 
 ```dub
-; tempo: 120         -- tempo only, meter inherited
+; tempo: 120         -- tempo only, meter and subdivision inherited
 ; tempo: 85 (4/4)    -- tempo + meter
 ; tempo: 72 (5/4)    -- tempo + odd meter
-; tempo: (5/4)       -- meter only, tempo inherited
+; tempo: (5/4)       -- meter only, tempo and subdivision inherited
+; tempo: 120 4n      -- tempo + subdivision
+; tempo: (5/4) 8n    -- meter + subdivision
+; tempo: 120 (5/4) 4n  -- all three specified
 ```
 
-Value parsing for `tempo`: `/^(\d+)?\s*(?:\((\d+\/\d+)\))?$/` — BPM optional, meter optional, at least one present.
+Value parsing for `tempo`: tokens are space-separated. Each token is parsed as BPM (digits), meter `(N/D)`, or subdivision (`4n`, `8n`, etc.). All parts optional, at least one required.
+
+**Valid subdivisions:**
+
+| Value | Beats | Meaning |
+|-------|-------|---------|
+| `1n` | 4 | whole note |
+| `2n` | 2 | half note |
+| `4n` | 1 | quarter note |
+| `4t` | 2/3 | quarter triplet |
+| `8n` | 0.5 | eighth note |
+| `8t` | 1/3 | eighth triplet |
+| `16n` | 0.25 | sixteenth note |
+| `16t` | 1/6 | sixteenth triplet |
+| `32n` | 0.125 | thirty-second note |
+
+**Default subdivisions per lane:**
+
+| Lane | Default | Reason |
+|------|---------|--------|
+| Drums | `8n` | 32 steps = 16 eighth notes per 4/4 measure |
+| Rhythm | `4n` | 16 steps = 16 quarter notes per 4/4 measure |
+| Harmony | `4n` | 16 steps = 16 quarter notes per 4/4 measure |
+| Bass | `16n` | 128 ticks = 32 sixteenth notes per 4/4 measure |
 
 ### 13.2 Scope levels (open question)
 
@@ -893,7 +922,7 @@ When the same key appears at multiple levels, inner scope wins (section override
 
 | Key | Value form | Meaning |
 |-----|-----------|---------|
-| `tempo` | `BPM` or `BPM (N/D)` | Tempo and optionally meter |
+| `tempo` | `BPM` or `BPM (N/D)` or `BPM (N/D) SUBDIV` | Tempo, meter, and subdivision |
 
 These are not yet implemented — listed here to anchor naming before code is written.
 
@@ -1003,3 +1032,95 @@ Backward-compatible — decoders that don't recognize `b` ignore it.
 ### 13.9 Open questions
 
 - **How far down does metadata go?** Track-level or clip-level metadata not yet explored. Defer until section-level is validated.
+
+---
+
+## 14. Subdivision System
+
+The subdivision system separates pattern notation from timing, enabling meter flexibility and Scribbletune compatibility.
+
+### 14.1 Core concepts
+
+| Concept | What it defines | Example |
+|---------|-----------------|---------|
+| **Pattern** | Rhythm notation (when to play) | `x-x-[xx]` |
+| **Subdivision** | Base note duration | `4n`, `8n`, `16n` |
+| **Meter** | Beats per measure | `4/4`, `5/4`, `7/8` |
+
+This decouples pattern notation from timing, making patterns portable across meters.
+
+### 14.2 Implementation
+
+**Exports from `skt.js`:**
+
+```js
+SUBDIVISIONS           // Map: "4n" → 1 beat, "8n" → 0.5 beats, etc.
+DEFAULT_SUBDIVISIONS   // Per-lane defaults: { drums: "8n", rhythm: "4n", ... }
+isValidSubdivision(v)  // Boolean check
+subdivisionToBeats(s)  // Convert "4n" → 1, "8n" → 0.5, etc.
+```
+
+**Exports from `lib/ui-widgets.js`:**
+
+```js
+parsePatternWithSubdiv(pattern, subdiv, maxSteps)  // Structured pattern parsing
+patternStepToHits(step)                            // Convert parsed step to hits
+SUBDIVISION_OPTIONS                                // UI selector options
+createSubdivisionSelect(current, laneType)         // Create <select> element
+formatMeterDisplay(meter)                          // [4,4] → "4/4"
+formatSubdivisionDisplay(subdiv)                   // "4n" → "Quarter"
+renderBassNotesPreview(...)                        // Bass notes preview
+renderBassPatternPreview(...)                      // Bass pattern preview
+```
+
+**Exports from `lib/audio-runtime.js`:**
+
+```js
+// AudioRuntime constructor accepts subdivision option
+new AudioRuntime(ctx, resolver, tracks, { subdiv: "16n" })
+
+// Scheduler uses subdivision-aware timing
+const subdivBeats = subdivisionToBeats(this.subdiv);
+const secondsPerStep = secondsPerBeat * subdivBeats;
+```
+
+### 14.3 Pattern parsing result
+
+```js
+parsePatternWithSubdiv("x-x-[xx]", "4n") = {
+  steps: [
+    { type: 'hit', velocity: 0.72 },
+    { type: 'rest' },
+    { type: 'hit', velocity: 0.72 },
+    { type: 'subhits', hits: [
+      { pos: 0.0, velocity: 0.72 },
+      { pos: 0.5, velocity: 0.72 }
+    ]}
+  ],
+  subdiv: '4n',
+  subdivBeats: 1,
+  stepDurationBeats: 1
+}
+```
+
+### 14.4 Sub-step semantics
+
+| Pattern | Subdiv | Result |
+|---------|--------|--------|
+| `[xx]` | 4n | 2× eighth notes (each = 0.5 quarters) |
+| `[xxx]` | 4n | 3× triplet eighths (each = 1/3 quarter) |
+| `[xxxx]` | 4n | 4× sixteenth notes (each = 0.25 quarters) |
+| `[xx]` | 8n | 2× sixteenth notes |
+| `[x-x]` | 4n | 2× eighth notes with rest between |
+
+### 14.5 Meter integration
+
+```
+Meter: 5/4
+Subdiv: 4n
+Pattern: x-x-x-x-x (5 quarter notes)
+
+Total duration: 5 quarter notes = 1 measure of 5/4
+```
+
+Step count derived from meter: `steps = 32 × N / D`
