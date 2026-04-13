@@ -3335,16 +3335,15 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
             updatePatternPreview();
             if (!parsed) return;
             scene.drums[track.key] = parsed;
+            if (!scene.drumPatternText) scene.drumPatternText = {};
+            scene.drumPatternText[track.key] = patternInput.value;
             savePreset();
           });
           patternInput.addEventListener("blur", () => {
             const parsed = parseDrumPattern(patternInput.value);
             if (!parsed) {
-              patternInput.value = formatDrumPattern(scene.drums[track.key]);
+              patternInput.value = scene.drumPatternText?.[track.key] || formatDrumPattern(scene.drums[track.key]);
               updatePatternValidity(parseDrumPattern(patternInput.value));
-            } else {
-              patternInput.value = formatDrumPattern(parsed);
-              updatePatternValidity(parsed);
             }
             updatePatternPreview();
           });
