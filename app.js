@@ -260,7 +260,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           scene.harmony[16] = "F";
           scene.drums.kick = parseDrumPattern("[xx]-- ---- [xx]-- ----") || [];
           scene.drums.snare = parseDrumPattern("---- [xx]-- ---- [xx]--") || [];
-          scene.drums.hihat = parseDrumPattern("[x-x] [x-x] [x-x] [x-x]") || [];
+          scene.drums.hihat = parseDrumPattern("[x-x]--- [x-x]--- [x-x]--- [x-x]---") || [];
           scene.drums.openhat = parseDrumPattern("---- ---- ---- [xx]--") || [];
           scene.bass = [
             {tick: 0, midi: 36, length: 4},
@@ -291,7 +291,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
         scene.drumPatternText = {
           kick: "[xx]-- ---- [xx]-- ----",
           snare: "---- [xx]-- ---- [xx]--",
-          hihat: "[x-x] [x-x] [x-x] [x-x]",
+          hihat: "[x-x]--- [x-x]--- [x-x]--- [x-x]---",
           openhat: "---- ---- ---- [xx]--",
         };
 
@@ -3313,7 +3313,7 @@ import { bindPatternInput, parseChordPattern, chordPatternStats, chordPatternSym
           const drumPatternText = scene.drumPatternText?.[track.key] || {
             kick: "[xx]-- ---- [xx]-- ----",
             snare: "---- [xx]-- ---- [xx]--",
-            hihat: "[x-x] [x-x] [x-x] [x-x]",
+            hihat: "[x-x]--- [x-x]--- [x-x]--- [x-x]---",
             openhat: "---- ---- ---- [xx]--",
           }[track.key] || formatDrumPattern(scene.drums[track.key]);
           editor.innerHTML = `
